@@ -13,14 +13,14 @@ type mockLab struct {
 	difficulty Difficulty
 }
 
-func (m *mockLab) ID() string                                                  { return m.id }
-func (m *mockLab) Title() string                                               { return m.title }
-func (m *mockLab) Category() Category                                          { return m.category }
-func (m *mockLab) Difficulty() Difficulty                                      { return m.difficulty }
-func (m *mockLab) Description() string                                         { return "test description" }
-func (m *mockLab) Hints() []string                                             { return []string{"hint1"} }
-func (m *mockLab) Prepare(ctx context.Context, kubeconfigPath string) error    { return nil }
-func (m *mockLab) Break(ctx context.Context, kubeconfigPath string) error      { return nil }
+func (m *mockLab) ID() string                                                    { return m.id }
+func (m *mockLab) Title() string                                                 { return m.title }
+func (m *mockLab) Category() Category                                            { return m.category }
+func (m *mockLab) Difficulty() Difficulty                                        { return m.difficulty }
+func (m *mockLab) Description() string                                           { return "test description" }
+func (m *mockLab) Hints() []string                                               { return []string{"hint1"} }
+func (m *mockLab) Prepare(ctx context.Context, kubeconfigPath string) error      { return nil }
+func (m *mockLab) Break(ctx context.Context, kubeconfigPath string) error        { return nil }
 func (m *mockLab) VerifyBroken(ctx context.Context, kubeconfigPath string) error { return nil }
 func (m *mockLab) SolutionSteps() []SolutionStep {
 	return []SolutionStep{
