@@ -19,9 +19,12 @@ func (m *mockLab) Category() Category                                           
 func (m *mockLab) Difficulty() Difficulty                                        { return m.difficulty }
 func (m *mockLab) Description() string                                           { return "test description" }
 func (m *mockLab) Hints() []string                                               { return []string{"hint1"} }
+func (m *mockLab) EstimatedTime() int                                            { return 20 }
+func (m *mockLab) Tags() []string                                                { return []string{"test"} }
 func (m *mockLab) Prepare(ctx context.Context, kubeconfigPath string) error      { return nil }
 func (m *mockLab) Break(ctx context.Context, kubeconfigPath string) error        { return nil }
 func (m *mockLab) VerifyBroken(ctx context.Context, kubeconfigPath string) error { return nil }
+func (m *mockLab) Verify(ctx context.Context, kubeconfigPath string) error       { return nil }
 func (m *mockLab) SolutionSteps() []SolutionStep {
 	return []SolutionStep{
 		{Description: "step1", Command: "cmd1"},

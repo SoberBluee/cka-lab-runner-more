@@ -315,6 +315,67 @@ var labRandomCmd = &cobra.Command{
 	},
 }
 
+var labVerifyCmd = &cobra.Command{
+	Use:   "verify <lab-id>",
+	Short: "Verify if you fixed the lab correctly",
+	Long:  `Checks if the lab issue has been resolved correctly.`,
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		labID := args[0]
+
+		// Get the lab
+		lab, err := labs.Get(labID)
+		if err != nil {
+			return err
+		}
+
+		// Load config
+		if err := loadConfig(); err != nil {
+			return err
+		}
+
+		// Create provider
+		provider, err := cluster.NewProvider(cluster.Config{
+			Provider:          cfg.Cluster.Provider,
+			Name:              cfg.Cluster.Name,
+			KubernetesVersion: cfg.Cluster.KubernetesVersion,
+		})
+		if err != nil {
+			return fmt.Errorf("creating provider: %w", err)
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+
+		// Check if cluster exists
+		exists, err := provider.Exists(ctx)
+		if err != nil {
+			return fmt.Errorf("checking if cluster exists: %w", err)
+		}
+
+		if !exists {
+			return fmt.Errorf("cluster does not exist")
+		}
+
+		// Get kubeconfig
+		kubeconfigPath, err := provider.KubeconfigPath(ctx)
+		if err != nil {
+			return fmt.Errorf("getting kubeconfig: %w", err)
+		}
+
+		// Verify the fix
+		cli.Info(fmt.Sprintf("Verifying lab: %s", lab.Title()))
+		if err := lab.Verify(ctx, kubeconfigPath); err != nil {
+			cli.Error(fmt.Sprintf("Lab not fixed yet: %v", err))
+			cli.Info("Keep trying! Use 'cka-lab-runner lab solution' if you need help")
+			return nil
+		}
+
+		cli.Success(fmt.Sprintf("Congratulations! You successfully fixed: %s", lab.Title()))
+		return nil
+	},
+}
+
 func init() {
 	// Global flags
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", config.DefaultConfigFile, "config file")
@@ -342,6 +403,7 @@ func init() {
 	labCmd.AddCommand(labRunCmd)
 	labCmd.AddCommand(labSolutionCmd)
 	labCmd.AddCommand(labRandomCmd)
+	labCmd.AddCommand(labVerifyCmd)
 }
 
 func loadConfig() error {

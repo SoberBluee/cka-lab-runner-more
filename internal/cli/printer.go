@@ -35,9 +35,16 @@ func PrintLabDetails(lab labs.Lab) {
 	fmt.Printf("║ Lab: %-60s ║\n", lab.Title())
 	fmt.Printf("╚═══════════════════════════════════════════════════════════════════╝\n")
 	fmt.Printf("\n")
-	fmt.Printf("ID:         %s\n", lab.ID())
-	fmt.Printf("Category:   %s\n", lab.Category())
-	fmt.Printf("Difficulty: %s\n", lab.Difficulty())
+	fmt.Printf("ID:              %s\n", lab.ID())
+	fmt.Printf("Category:        %s\n", lab.Category())
+	fmt.Printf("Difficulty:      %s\n", lab.Difficulty())
+	fmt.Printf("Estimated Time:  %d minutes\n", lab.EstimatedTime())
+
+	tags := lab.Tags()
+	if len(tags) > 0 {
+		fmt.Printf("Tags:            %s\n", strings.Join(tags, ", "))
+	}
+
 	fmt.Printf("\n")
 	fmt.Printf("Description:\n")
 	fmt.Printf("%s\n", lab.Description())

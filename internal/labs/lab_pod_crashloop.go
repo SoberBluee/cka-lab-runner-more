@@ -10,7 +10,9 @@ func init() {
 	Register(&PodCrashLoopLab{})
 }
 
-type PodCrashLoopLab struct{}
+type PodCrashLoopLab struct {
+	BaseLab
+}
 
 func (l *PodCrashLoopLab) ID() string {
 	return "pod_crashloop"
@@ -42,6 +44,14 @@ func (l *PodCrashLoopLab) Hints() []string {
 		"Check the container image and command configuration",
 		"Environment variables might be incorrectly configured",
 	}
+}
+
+func (l *PodCrashLoopLab) EstimatedTime() int {
+	return 15
+}
+
+func (l *PodCrashLoopLab) Tags() []string {
+	return []string{"pods", "crashloop", "configmap", "troubleshooting", "workloads"}
 }
 
 func (l *PodCrashLoopLab) Prepare(ctx context.Context, kubeconfigPath string) error {

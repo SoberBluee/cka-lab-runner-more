@@ -11,7 +11,9 @@ func init() {
 	Register(&EtcdWrongIPLab{})
 }
 
-type EtcdWrongIPLab struct{}
+type EtcdWrongIPLab struct {
+	BaseLab
+}
 
 func (l *EtcdWrongIPLab) ID() string {
 	return "etcd_wrong_ip"
@@ -43,6 +45,14 @@ func (l *EtcdWrongIPLab) Hints() []string {
 		"The etcd servers are configured via the --etcd-servers flag",
 		"You may need to access the control plane node using docker exec",
 	}
+}
+
+func (l *EtcdWrongIPLab) EstimatedTime() int {
+	return 25
+}
+
+func (l *EtcdWrongIPLab) Tags() []string {
+	return []string{"etcd", "api-server", "static-pods", "control-plane"}
 }
 
 func (l *EtcdWrongIPLab) Prepare(ctx context.Context, kubeconfigPath string) error {

@@ -10,7 +10,9 @@ func init() {
 	Register(&NetworkPolicyLab{})
 }
 
-type NetworkPolicyLab struct{}
+type NetworkPolicyLab struct {
+	BaseLab
+}
 
 func (l *NetworkPolicyLab) ID() string {
 	return "network_policy_blocking"
@@ -42,6 +44,14 @@ func (l *NetworkPolicyLab) Hints() []string {
 		"NetworkPolicies use label selectors to allow/deny traffic",
 		"Check both ingress and egress rules",
 	}
+}
+
+func (l *NetworkPolicyLab) EstimatedTime() int {
+	return 20
+}
+
+func (l *NetworkPolicyLab) Tags() []string {
+	return []string{"networking", "network-policy", "labels", "selectors"}
 }
 
 func (l *NetworkPolicyLab) Prepare(ctx context.Context, kubeconfigPath string) error {

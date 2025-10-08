@@ -11,7 +11,9 @@ func init() {
 	Register(&SchedulerNotRunningLab{})
 }
 
-type SchedulerNotRunningLab struct{}
+type SchedulerNotRunningLab struct {
+	BaseLab
+}
 
 func (l *SchedulerNotRunningLab) ID() string {
 	return "scheduler_not_running"
@@ -43,6 +45,14 @@ func (l *SchedulerNotRunningLab) Hints() []string {
 		"Check for typos or invalid configuration in the manifest",
 		"The kubelet automatically restarts static pods when their manifests change",
 	}
+}
+
+func (l *SchedulerNotRunningLab) EstimatedTime() int {
+	return 20
+}
+
+func (l *SchedulerNotRunningLab) Tags() []string {
+	return []string{"scheduler", "static-pods", "scheduling", "troubleshooting"}
 }
 
 func (l *SchedulerNotRunningLab) Prepare(ctx context.Context, kubeconfigPath string) error {

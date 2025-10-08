@@ -10,7 +10,9 @@ func init() {
 	Register(&CoreDNSBrokenConfigLab{})
 }
 
-type CoreDNSBrokenConfigLab struct{}
+type CoreDNSBrokenConfigLab struct {
+	BaseLab
+}
 
 func (l *CoreDNSBrokenConfigLab) ID() string {
 	return "coredns_broken_config"
@@ -42,6 +44,14 @@ func (l *CoreDNSBrokenConfigLab) Hints() []string {
 		"The Corefile syntax might be invalid",
 		"Check the CoreDNS pod logs for syntax errors",
 	}
+}
+
+func (l *CoreDNSBrokenConfigLab) EstimatedTime() int {
+	return 15
+}
+
+func (l *CoreDNSBrokenConfigLab) Tags() []string {
+	return []string{"dns", "coredns", "configmap", "troubleshooting"}
 }
 
 func (l *CoreDNSBrokenConfigLab) Prepare(ctx context.Context, kubeconfigPath string) error {
