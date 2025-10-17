@@ -61,7 +61,9 @@ func init() {
 	Register(&YourLabName{})
 }
 
-type YourLabName struct{}
+type YourLabName struct {
+	BaseLab  // Embeds BaseLab for default implementations
+}
 
 func (l *YourLabName) ID() string {
 	// Unique ID using snake_case
@@ -100,6 +102,16 @@ func (l *YourLabName) Hints() []string {
 		"Hint about which commands to use",
 		"Very specific hint about the root cause",
 	}
+}
+
+func (l *YourLabName) EstimatedTime() int {
+	// Estimated completion time in minutes
+	return 20
+}
+
+func (l *YourLabName) Tags() []string {
+	// Searchable tags for this lab
+	return []string{"tag1", "tag2", "troubleshooting"}
 }
 
 func (l *YourLabName) Prepare(ctx context.Context, kubeconfigPath string) error {
@@ -161,6 +173,22 @@ func (l *YourLabName) VerifyBroken(ctx context.Context, kubeconfigPath string) e
 	return nil
 }
 
+func (l *YourLabName) Verify(ctx context.Context, kubeconfigPath string) error {
+	// Check if the user fixed the issue correctly
+	// This enables the 'lab verify' command
+
+	output, err := kubectl(ctx, kubeconfigPath, "get", "pods", "-o", "jsonpath={.items[*].status.phase}")
+	if err != nil {
+		return fmt.Errorf("failed to check pods: %w", err)
+	}
+
+	if !strings.Contains(output, "Running") {
+		return fmt.Errorf("pods are not running yet")
+	}
+
+	return nil
+}
+
 func (l *YourLabName) SolutionSteps() []SolutionStep {
 	// Step-by-step solution
 	// Each step should be actionable
@@ -193,6 +221,11 @@ func (l *YourLabName) SolutionSteps() []SolutionStep {
 	}
 }
 ```
+
+**Important Notes:**
+- **BaseLab**: By embedding `BaseLab`, your lab automatically gets default implementations for `EstimatedTime()` (returns 20), `Tags()` (returns empty array), and `Verify()` (returns error). You can override any of these by implementing the method in your lab struct.
+- **Optional Methods**: `Prepare()` and `VerifyBroken()` are optional. If you don't need them, you can omit them entirely.
+- **Verify() Method**: Implement this if you want users to be able to use `cka-lab-runner lab verify <lab-id>` to check their fix automatically. If not implemented, users will see an error message saying verification is not available for this lab.
 
 ### Step 4: Test Your Lab
 

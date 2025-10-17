@@ -495,19 +495,60 @@ This ensures all labs remain functional as the codebase evolves.
 
 ## Roadmap
 
-### Completed ✅
-- ✅ 8 production-grade labs covering all major CKA topics
-- ✅ Automatic verification system
-- ✅ Rich metadata (estimated times, tags)
-- ✅ Category and difficulty filtering
-- ✅ Reproducible random lab selection
+### v1.0 - Completed ✅
+**Core Infrastructure:**
+- ✅ CLI tool with Cobra framework
+- ✅ Kind cluster provider (fully implemented)
+- ✅ YAML-based configuration system
+- ✅ Lab registry and management system
+- ✅ Makefile and developer tooling
+- ✅ GitHub Actions CI/CD pipeline
 
-### Planned
+**Lab Coverage (8 Total):**
+- ✅ Control-plane labs (etcd, scheduler)
+- ✅ DNS labs (CoreDNS)
+- ✅ Networking labs (NetworkPolicy)
+- ✅ Storage labs (PersistentVolumes/PVC)
+- ✅ RBAC labs (Role permissions)
+- ✅ Workloads labs (CrashLoop, ImagePull)
+- ✅ Difficulty progression (Easy → Medium → Hard)
+
+**Advanced Features:**
+- ✅ Automatic verification system (`lab verify` command)
+- ✅ Rich metadata (estimated times, searchable tags)
+- ✅ Category and difficulty filtering
+- ✅ Reproducible random lab selection (with seeds)
+- ✅ Progressive hints (4 per lab)
+- ✅ Step-by-step solution guides
+- ✅ BaseLab pattern for easy extension
+
+**Documentation:**
+- ✅ Comprehensive README (500+ lines)
+- ✅ Detailed examples and walkthroughs
+- ✅ Contributing guide with templates
+- ✅ Feature documentation
+- ✅ 100% test coverage with passing tests
+
+### Future Enhancements
+**v1.1 - Additional Cluster Providers:**
 - [ ] k3d provider support
 - [ ] minikube provider support
-- [ ] More labs (cluster upgrades, etcd backup/restore, node failures)
-- [ ] Timer mode for exam simulation
+- [ ] Cluster provider auto-detection
+
+**v1.2 - More Lab Scenarios:**
+- [ ] Cluster upgrade simulation
+- [ ] etcd backup and restore
+- [ ] Node failure scenarios (kubelet stopped)
+- [ ] Ingress configuration issues
+- [ ] Certificate expiration problems
+- [ ] StatefulSet and DaemonSet labs
+
+**v2.0 - Exam Simulation:**
+- [ ] Timer mode with exam countdown
+- [ ] Full exam simulation (series of labs)
 - [ ] Progress tracking across sessions
+- [ ] Performance metrics and scoring
+- [ ] Lab completion certificates
 
 ## Contributing
 
