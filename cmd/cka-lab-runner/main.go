@@ -66,7 +66,10 @@ var upCmd = &cobra.Command{
 	Short: "Create the local Kubernetes cluster",
 	Long:  `Creates a local Kubernetes cluster based on the configuration file.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		recreate, _ := cmd.Flags().GetBool("recreate")
+		recreate, err := cmd.Flags().GetBool("recreate")
+		if err != nil {
+			return fmt.Errorf("getting recreate flag: %w", err)
+		}
 
 		// Load config
 		if err := loadConfig(); err != nil {
@@ -74,11 +77,7 @@ var upCmd = &cobra.Command{
 		}
 
 		// Create provider
-		provider, err := cluster.NewProvider(cluster.Config{
-			Provider:          cfg.Cluster.Provider,
-			Name:              cfg.Cluster.Name,
-			KubernetesVersion: cfg.Cluster.KubernetesVersion,
-		})
+		provider, err := createProvider()
 		if err != nil {
 			return fmt.Errorf("creating provider: %w", err)
 		}
@@ -126,11 +125,7 @@ var downCmd = &cobra.Command{
 		}
 
 		// Create provider
-		provider, err := cluster.NewProvider(cluster.Config{
-			Provider:          cfg.Cluster.Provider,
-			Name:              cfg.Cluster.Name,
-			KubernetesVersion: cfg.Cluster.KubernetesVersion,
-		})
+		provider, err := createProvider()
 		if err != nil {
 			return fmt.Errorf("creating provider: %w", err)
 		}
@@ -160,8 +155,14 @@ var labListCmd = &cobra.Command{
 	Short: "List available labs",
 	Long:  `Lists all available practice labs with their metadata.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		categoryFilter, _ := cmd.Flags().GetString("category")
-		difficultyFilter, _ := cmd.Flags().GetString("difficulty")
+		categoryFilter, err := cmd.Flags().GetString("category")
+		if err != nil {
+			return fmt.Errorf("getting category flag: %w", err)
+		}
+		difficultyFilter, err := cmd.Flags().GetString("difficulty")
+		if err != nil {
+			return fmt.Errorf("getting difficulty flag: %w", err)
+		}
 
 		allLabs := labs.List()
 		var filteredLabs []labs.Lab
@@ -204,11 +205,7 @@ var labRunCmd = &cobra.Command{
 		}
 
 		// Create provider
-		provider, err := cluster.NewProvider(cluster.Config{
-			Provider:          cfg.Cluster.Provider,
-			Name:              cfg.Cluster.Name,
-			KubernetesVersion: cfg.Cluster.KubernetesVersion,
-		})
+		provider, err := createProvider()
 		if err != nil {
 			return fmt.Errorf("creating provider: %w", err)
 		}
@@ -285,9 +282,18 @@ var labRandomCmd = &cobra.Command{
 	Short: "Select a random lab",
 	Long:  `Selects and runs a random lab, optionally filtered by category and difficulty.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		seed, _ := cmd.Flags().GetInt64("seed")
-		categoryFilter, _ := cmd.Flags().GetString("category")
-		difficultyFilter, _ := cmd.Flags().GetString("difficulty")
+		seed, err := cmd.Flags().GetInt64("seed")
+		if err != nil {
+			return fmt.Errorf("getting seed flag: %w", err)
+		}
+		categoryFilter, err := cmd.Flags().GetString("category")
+		if err != nil {
+			return fmt.Errorf("getting category flag: %w", err)
+		}
+		difficultyFilter, err := cmd.Flags().GetString("difficulty")
+		if err != nil {
+			return fmt.Errorf("getting difficulty flag: %w", err)
+		}
 
 		if seed == 0 {
 			seed = time.Now().UnixNano()
@@ -335,11 +341,7 @@ var labVerifyCmd = &cobra.Command{
 		}
 
 		// Create provider
-		provider, err := cluster.NewProvider(cluster.Config{
-			Provider:          cfg.Cluster.Provider,
-			Name:              cfg.Cluster.Name,
-			KubernetesVersion: cfg.Cluster.KubernetesVersion,
-		})
+		provider, err := createProvider()
 		if err != nil {
 			return fmt.Errorf("creating provider: %w", err)
 		}
@@ -413,4 +415,12 @@ func loadConfig() error {
 		return fmt.Errorf("loading config: %w (run 'cka-lab-runner init' to create one)", err)
 	}
 	return nil
+}
+
+func createProvider() (cluster.Provider, error) {
+	return cluster.NewProvider(cluster.Config{
+		Provider:          cfg.Cluster.Provider,
+		Name:              cfg.Cluster.Name,
+		KubernetesVersion: cfg.Cluster.KubernetesVersion,
+	})
 }

@@ -56,15 +56,7 @@ func (l *SchedulerNotRunningLab) Tags() []string {
 }
 
 func (l *SchedulerNotRunningLab) Prepare(ctx context.Context, kubeconfigPath string) error {
-	// Wait for cluster to be ready
-	for i := 0; i < 30; i++ {
-		_, err := kubectl(ctx, kubeconfigPath, "get", "nodes")
-		if err == nil {
-			return nil
-		}
-		time.Sleep(2 * time.Second)
-	}
-	return fmt.Errorf("cluster did not become ready in time")
+	return WaitForClusterReady(ctx, kubeconfigPath)
 }
 
 func (l *SchedulerNotRunningLab) Break(ctx context.Context, kubeconfigPath string) error {
@@ -124,6 +116,54 @@ spec:
 	output, _ := kubectl(ctx, kubeconfigPath, "get", "pod", "test-scheduling", "-o", "jsonpath={.status.phase}")
 	if strings.TrimSpace(output) == "Pending" {
 		return nil
+	}
+
+	return nil
+}
+
+func (l *SchedulerNotRunningLab) Verify(ctx context.Context, kubeconfigPath string) error {
+	// Check if the kube-scheduler pod is running
+	output, err := kubectl(ctx, kubeconfigPath, "get", "pods", "-n", "kube-system",
+		"-l", "component=kube-scheduler",
+		"-o", "jsonpath={.items[*].status.phase}")
+	if err != nil {
+		return fmt.Errorf("failed to check scheduler pod: %w", err)
+	}
+
+	if !strings.Contains(output, "Running") {
+		return fmt.Errorf("scheduler pod is not running yet")
+	}
+
+	// Create a test pod to verify scheduling works
+	testPod := `apiVersion: v1
+kind: Pod
+metadata:
+  name: verify-scheduling
+  namespace: default
+spec:
+  containers:
+  - name: nginx
+    image: nginx:alpine
+`
+	if err := kubectlApply(ctx, kubeconfigPath, testPod); err != nil {
+		return fmt.Errorf("failed to create test pod: %w", err)
+	}
+
+	// Wait and check if the pod gets scheduled
+	time.Sleep(10 * time.Second)
+	output, err = kubectl(ctx, kubeconfigPath, "get", "pod", "verify-scheduling",
+		"-o", "jsonpath={.spec.nodeName}")
+	if err != nil {
+		// Clean up the test pod
+		kubectl(ctx, kubeconfigPath, "delete", "pod", "verify-scheduling", "--ignore-not-found=true")
+		return fmt.Errorf("failed to check test pod: %w", err)
+	}
+
+	// Clean up the test pod
+	kubectl(ctx, kubeconfigPath, "delete", "pod", "verify-scheduling", "--ignore-not-found=true")
+
+	if strings.TrimSpace(output) == "" {
+		return fmt.Errorf("test pod was not scheduled to a node")
 	}
 
 	return nil

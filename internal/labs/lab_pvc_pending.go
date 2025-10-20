@@ -55,15 +55,7 @@ func (l *PVCPendingLab) Tags() []string {
 }
 
 func (l *PVCPendingLab) Prepare(ctx context.Context, kubeconfigPath string) error {
-	// Wait for cluster to be ready
-	for i := 0; i < 30; i++ {
-		_, err := kubectl(ctx, kubeconfigPath, "get", "nodes")
-		if err == nil {
-			return nil
-		}
-		time.Sleep(2 * time.Second)
-	}
-	return fmt.Errorf("cluster did not become ready in time")
+	return WaitForClusterReady(ctx, kubeconfigPath)
 }
 
 func (l *PVCPendingLab) Break(ctx context.Context, kubeconfigPath string) error {
@@ -118,6 +110,32 @@ func (l *PVCPendingLab) VerifyBroken(ctx context.Context, kubeconfigPath string)
 	// Check PVC status (should be Pending)
 	output, _ := kubectl(ctx, kubeconfigPath, "get", "pvc", "app-data", "-o", "jsonpath={.status.phase}")
 	_ = output // Should be "Pending"
+
+	return nil
+}
+
+func (l *PVCPendingLab) Verify(ctx context.Context, kubeconfigPath string) error {
+	// Check if the PVC is bound
+	output, err := kubectl(ctx, kubeconfigPath, "get", "pvc", "app-data",
+		"-o", "jsonpath={.status.phase}")
+	if err != nil {
+		return fmt.Errorf("failed to check PVC: %w", err)
+	}
+
+	if output != "Bound" {
+		return fmt.Errorf("PVC is not bound yet (current status: %s)", output)
+	}
+
+	// Also check that the PV is bound to this PVC
+	output, err = kubectl(ctx, kubeconfigPath, "get", "pvc", "app-data",
+		"-o", "jsonpath={.spec.volumeName}")
+	if err != nil {
+		return fmt.Errorf("failed to check PVC volume name: %w", err)
+	}
+
+	if output == "" {
+		return fmt.Errorf("PVC does not have a bound volume")
+	}
 
 	return nil
 }

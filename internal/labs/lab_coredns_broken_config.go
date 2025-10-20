@@ -3,6 +3,7 @@ package labs
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -55,15 +56,7 @@ func (l *CoreDNSBrokenConfigLab) Tags() []string {
 }
 
 func (l *CoreDNSBrokenConfigLab) Prepare(ctx context.Context, kubeconfigPath string) error {
-	// Wait for cluster to be ready
-	for i := 0; i < 30; i++ {
-		_, err := kubectl(ctx, kubeconfigPath, "get", "nodes")
-		if err == nil {
-			return nil
-		}
-		time.Sleep(2 * time.Second)
-	}
-	return fmt.Errorf("cluster did not become ready in time")
+	return WaitForClusterReady(ctx, kubeconfigPath)
 }
 
 func (l *CoreDNSBrokenConfigLab) Break(ctx context.Context, kubeconfigPath string) error {
@@ -118,6 +111,42 @@ func (l *CoreDNSBrokenConfigLab) VerifyBroken(ctx context.Context, kubeconfigPat
 	// Check if CoreDNS pods are in CrashLoopBackOff
 	output, _ := kubectl(ctx, kubeconfigPath, "get", "pods", "-n", "kube-system", "-l", "k8s-app=kube-dns", "-o", "jsonpath={.items[*].status.phase}")
 	_ = output // We don't strictly need to verify, just wait for the changes to apply
+
+	return nil
+}
+
+func (l *CoreDNSBrokenConfigLab) Verify(ctx context.Context, kubeconfigPath string) error {
+	// Check if all CoreDNS pods are running
+	output, err := kubectl(ctx, kubeconfigPath, "get", "pods", "-n", "kube-system",
+		"-l", "k8s-app=kube-dns",
+		"-o", "jsonpath={.items[*].status.phase}")
+	if err != nil {
+		return fmt.Errorf("failed to check CoreDNS pods: %w", err)
+	}
+
+	// Split by space and check all are Running
+	phases := strings.Fields(output)
+	if len(phases) == 0 {
+		return fmt.Errorf("no CoreDNS pods found")
+	}
+
+	for _, phase := range phases {
+		if phase != "Running" {
+			return fmt.Errorf("CoreDNS pod not running yet (status: %s)", phase)
+		}
+	}
+
+	// Verify all containers in CoreDNS pods are ready
+	output, err = kubectl(ctx, kubeconfigPath, "get", "pods", "-n", "kube-system",
+		"-l", "k8s-app=kube-dns",
+		"-o", "jsonpath={.items[*].status.containerStatuses[*].ready}")
+	if err != nil {
+		return fmt.Errorf("failed to check CoreDNS container status: %w", err)
+	}
+
+	if !strings.Contains(output, "true") {
+		return fmt.Errorf("CoreDNS containers are not ready yet")
+	}
 
 	return nil
 }

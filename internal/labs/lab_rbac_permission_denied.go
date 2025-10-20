@@ -3,6 +3,7 @@ package labs
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -55,15 +56,7 @@ func (l *RBACPermissionDeniedLab) Tags() []string {
 }
 
 func (l *RBACPermissionDeniedLab) Prepare(ctx context.Context, kubeconfigPath string) error {
-	// Wait for cluster to be ready
-	for i := 0; i < 30; i++ {
-		_, err := kubectl(ctx, kubeconfigPath, "get", "nodes")
-		if err == nil {
-			return nil
-		}
-		time.Sleep(2 * time.Second)
-	}
-	return fmt.Errorf("cluster did not become ready in time")
+	return WaitForClusterReady(ctx, kubeconfigPath)
 }
 
 func (l *RBACPermissionDeniedLab) Break(ctx context.Context, kubeconfigPath string) error {
@@ -121,6 +114,34 @@ func (l *RBACPermissionDeniedLab) VerifyBroken(ctx context.Context, kubeconfigPa
 		"--namespace=development", "--as=john")
 	// We expect this to return "no", but kubectl auth can-i returns exit code 1 for "no"
 	_ = err // Ignore the error, it's expected
+	return nil
+}
+
+func (l *RBACPermissionDeniedLab) Verify(ctx context.Context, kubeconfigPath string) error {
+	// Test if john can create pods (should succeed)
+	output, err := kubectl(ctx, kubeconfigPath, "auth", "can-i", "create", "pods",
+		"--namespace=development", "--as=john")
+	if err != nil {
+		return fmt.Errorf("user 'john' still cannot create pods: %w", err)
+	}
+
+	// kubectl auth can-i returns "yes" or "no"
+	output = strings.TrimSpace(output)
+	if output != "yes" {
+		return fmt.Errorf("user 'john' still cannot create pods (got: %s)", output)
+	}
+
+	// Also verify the role exists and has the correct permissions
+	roleOutput, err := kubectl(ctx, kubeconfigPath, "get", "role", "developer-role",
+		"-n", "development", "-o", "jsonpath={.rules[0].verbs}")
+	if err != nil {
+		return fmt.Errorf("failed to check role: %w", err)
+	}
+
+	if !strings.Contains(roleOutput, "create") {
+		return fmt.Errorf("role still missing 'create' permission")
+	}
+
 	return nil
 }
 

@@ -55,15 +55,7 @@ func (l *ImagePullBackOffLab) Tags() []string {
 }
 
 func (l *ImagePullBackOffLab) Prepare(ctx context.Context, kubeconfigPath string) error {
-	// Wait for cluster to be ready
-	for i := 0; i < 30; i++ {
-		_, err := kubectl(ctx, kubeconfigPath, "get", "nodes")
-		if err == nil {
-			return nil
-		}
-		time.Sleep(2 * time.Second)
-	}
-	return fmt.Errorf("cluster did not become ready in time")
+	return WaitForClusterReady(ctx, kubeconfigPath)
 }
 
 func (l *ImagePullBackOffLab) Break(ctx context.Context, kubeconfigPath string) error {

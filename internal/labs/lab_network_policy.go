@@ -3,6 +3,7 @@ package labs
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -55,15 +56,7 @@ func (l *NetworkPolicyLab) Tags() []string {
 }
 
 func (l *NetworkPolicyLab) Prepare(ctx context.Context, kubeconfigPath string) error {
-	// Wait for cluster to be ready
-	for i := 0; i < 30; i++ {
-		_, err := kubectl(ctx, kubeconfigPath, "get", "nodes")
-		if err == nil {
-			return nil
-		}
-		time.Sleep(2 * time.Second)
-	}
-	return fmt.Errorf("cluster did not become ready in time")
+	return WaitForClusterReady(ctx, kubeconfigPath)
 }
 
 func (l *NetworkPolicyLab) Break(ctx context.Context, kubeconfigPath string) error {
@@ -175,6 +168,46 @@ spec:
 func (l *NetworkPolicyLab) VerifyBroken(ctx context.Context, kubeconfigPath string) error {
 	// Wait for resources to be created
 	time.Sleep(10 * time.Second)
+	return nil
+}
+
+func (l *NetworkPolicyLab) Verify(ctx context.Context, kubeconfigPath string) error {
+	// Check if both pods are running
+	output, err := kubectl(ctx, kubeconfigPath, "get", "pods", "-n", "webapp",
+		"-o", "jsonpath={.items[*].status.phase}")
+	if err != nil {
+		return fmt.Errorf("failed to check pods: %w", err)
+	}
+
+	if !strings.Contains(output, "Running") {
+		return fmt.Errorf("not all pods are running yet")
+	}
+
+	// Get the frontend pod name
+	frontendPod, err := kubectl(ctx, kubeconfigPath, "get", "pods", "-n", "webapp",
+		"-l", "app=frontend", "-o", "jsonpath={.items[0].metadata.name}")
+	if err != nil {
+		return fmt.Errorf("failed to get frontend pod name: %w", err)
+	}
+
+	frontendPod = strings.TrimSpace(frontendPod)
+	if frontendPod == "" {
+		return fmt.Errorf("frontend pod not found")
+	}
+
+	// Test connectivity from frontend to backend
+	// Use wget with timeout to test if backend is reachable
+	output, err = kubectl(ctx, kubeconfigPath, "exec", "-n", "webapp", frontendPod,
+		"--", "wget", "-O-", "--timeout=5", "-q", "http://backend")
+	if err != nil {
+		return fmt.Errorf("frontend cannot reach backend: %w", err)
+	}
+
+	// Check if we got nginx welcome page (or any response)
+	if !strings.Contains(output, "nginx") && !strings.Contains(output, "Welcome") && len(output) < 10 {
+		return fmt.Errorf("connectivity test did not return expected response")
+	}
+
 	return nil
 }
 

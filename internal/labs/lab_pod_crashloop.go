@@ -55,15 +55,7 @@ func (l *PodCrashLoopLab) Tags() []string {
 }
 
 func (l *PodCrashLoopLab) Prepare(ctx context.Context, kubeconfigPath string) error {
-	// Wait for cluster to be ready
-	for i := 0; i < 30; i++ {
-		_, err := kubectl(ctx, kubeconfigPath, "get", "nodes")
-		if err == nil {
-			return nil
-		}
-		time.Sleep(2 * time.Second)
-	}
-	return fmt.Errorf("cluster did not become ready in time")
+	return WaitForClusterReady(ctx, kubeconfigPath)
 }
 
 func (l *PodCrashLoopLab) Break(ctx context.Context, kubeconfigPath string) error {
@@ -107,6 +99,33 @@ spec:
 func (l *PodCrashLoopLab) VerifyBroken(ctx context.Context, kubeconfigPath string) error {
 	// Wait for pods to enter crash loop
 	time.Sleep(15 * time.Second)
+	return nil
+}
+
+func (l *PodCrashLoopLab) Verify(ctx context.Context, kubeconfigPath string) error {
+	// Check if the deployment has all replicas ready
+	output, err := kubectl(ctx, kubeconfigPath, "get", "deployment", "webapp",
+		"-o", "jsonpath={.status.readyReplicas}")
+	if err != nil {
+		return fmt.Errorf("failed to check deployment: %w", err)
+	}
+
+	if output != "2" {
+		return fmt.Errorf("deployment not fully ready yet (ready replicas: %s, expected: 2)", output)
+	}
+
+	// Also verify pods are actually running
+	output, err = kubectl(ctx, kubeconfigPath, "get", "pods", "-l", "app=webapp",
+		"-o", "jsonpath={.items[*].status.phase}")
+	if err != nil {
+		return fmt.Errorf("failed to check pods: %w", err)
+	}
+
+	// All pods should be Running
+	if output != "Running Running" {
+		return fmt.Errorf("not all pods are running yet")
+	}
+
 	return nil
 }
 

@@ -56,15 +56,7 @@ func (l *EtcdWrongIPLab) Tags() []string {
 }
 
 func (l *EtcdWrongIPLab) Prepare(ctx context.Context, kubeconfigPath string) error {
-	// Wait for cluster to be ready
-	for i := 0; i < 30; i++ {
-		_, err := kubectl(ctx, kubeconfigPath, "get", "nodes")
-		if err == nil {
-			return nil
-		}
-		time.Sleep(2 * time.Second)
-	}
-	return fmt.Errorf("cluster did not become ready in time")
+	return WaitForClusterReady(ctx, kubeconfigPath)
 }
 
 func (l *EtcdWrongIPLab) Break(ctx context.Context, kubeconfigPath string) error {
@@ -112,6 +104,30 @@ func (l *EtcdWrongIPLab) VerifyBroken(ctx context.Context, kubeconfigPath string
 	}
 
 	// If it succeeded, the lab might not be fully broken yet
+	return nil
+}
+
+func (l *EtcdWrongIPLab) Verify(ctx context.Context, kubeconfigPath string) error {
+	// Check if the API server can communicate with etcd
+	// Try to get nodes with a reasonable timeout
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	output, err := kubectl(ctx, kubeconfigPath, "get", "nodes", "-o", "jsonpath={.items[*].status.conditions[?(@.type=='Ready')].status}")
+	if err != nil {
+		return fmt.Errorf("API server not responding: %w", err)
+	}
+
+	if !strings.Contains(output, "True") {
+		return fmt.Errorf("nodes are not ready yet")
+	}
+
+	// Also verify we can list pods in kube-system (ensures API server can read from etcd)
+	_, err = kubectl(ctx, kubeconfigPath, "get", "pods", "-n", "kube-system")
+	if err != nil {
+		return fmt.Errorf("API server cannot list resources from etcd: %w", err)
+	}
+
 	return nil
 }
 

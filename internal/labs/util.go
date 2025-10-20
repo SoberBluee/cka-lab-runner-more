@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 // kubectl executes a kubectl command with the given kubeconfig
@@ -59,4 +60,16 @@ func dockerCp(ctx context.Context, src, dst string) error {
 		return fmt.Errorf("docker cp failed: %s: %w", string(output), err)
 	}
 	return nil
+}
+
+// WaitForClusterReady waits for the cluster to be ready by checking if nodes are accessible
+func WaitForClusterReady(ctx context.Context, kubeconfigPath string) error {
+	for i := 0; i < 30; i++ {
+		_, err := kubectl(ctx, kubeconfigPath, "get", "nodes")
+		if err == nil {
+			return nil
+		}
+		time.Sleep(2 * time.Second)
+	}
+	return fmt.Errorf("cluster did not become ready in time")
 }
