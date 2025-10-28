@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"fmt"
+	"os/exec"
 )
 
 // Provider defines the interface for cluster providers (kind, k3d, etc.)
@@ -32,14 +33,52 @@ type Config struct {
 
 // NewProvider creates a new cluster provider based on the config
 func NewProvider(cfg Config) (Provider, error) {
-	switch cfg.Provider {
+	providerName := cfg.Provider
+
+	// Auto-detect provider if set to "auto"
+	if providerName == "auto" || providerName == "" {
+		detected, err := DetectProvider()
+		if err != nil {
+			return nil, fmt.Errorf("auto-detecting provider: %w", err)
+		}
+		providerName = detected
+	}
+
+	switch providerName {
 	case "kind":
 		return NewKindProvider(cfg.Name, cfg.KubernetesVersion), nil
 	case "k3d":
-		return nil, fmt.Errorf("k3d provider not yet implemented")
+		return NewK3dProvider(cfg.Name, cfg.KubernetesVersion), nil
 	case "minikube":
-		return nil, fmt.Errorf("minikube provider not yet implemented")
+		return NewMinikubeProvider(cfg.Name, cfg.KubernetesVersion), nil
 	default:
-		return nil, fmt.Errorf("unknown provider: %s (supported: kind, k3d, minikube)", cfg.Provider)
+		return nil, fmt.Errorf("unknown provider: %s (supported: kind, k3d, minikube, auto)", providerName)
 	}
+}
+
+// DetectProvider attempts to auto-detect which cluster provider is available
+// It checks in order: kind, k3d, minikube
+func DetectProvider() (string, error) {
+	// Check for kind
+	if isCommandAvailable("kind") {
+		return "kind", nil
+	}
+
+	// Check for k3d
+	if isCommandAvailable("k3d") {
+		return "k3d", nil
+	}
+
+	// Check for minikube
+	if isCommandAvailable("minikube") {
+		return "minikube", nil
+	}
+
+	return "", fmt.Errorf("no supported cluster provider found (checked: kind, k3d, minikube)")
+}
+
+// isCommandAvailable checks if a command is available in PATH
+func isCommandAvailable(name string) bool {
+	_, err := exec.LookPath(name)
+	return err == nil
 }

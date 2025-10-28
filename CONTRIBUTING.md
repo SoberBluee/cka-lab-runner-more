@@ -7,7 +7,7 @@ Thank you for your interest in contributing to cka-lab-runner! This document pro
 1. **Add new labs** - The most valuable contribution!
 2. **Improve documentation** - Help others understand the tool
 3. **Fix bugs** - Report or fix issues you find
-4. **Add features** - New cluster providers, CLI features, etc.
+4. **Add features** - CLI features, new verification methods, etc.
 5. **Write tests** - Improve code coverage
 
 ## Adding a New Lab
@@ -339,31 +339,38 @@ nodeName, err := getControlPlaneNode(ctx, kubeconfigPath)
 We need labs for these scenarios:
 
 ### High Priority
-- [ ] RBAC permission denied
-- [ ] PersistentVolume/PersistentVolumeClaim issues
-- [ ] Node NotReady (kubelet stopped)
+- [x] RBAC permission denied
+- [x] PersistentVolume/PersistentVolumeClaim issues
+- [x] Node NotReady (kubelet stopped)
 - [ ] Taint/toleration scheduling issue
 - [ ] Resource quota exceeded
-- [ ] ImagePullBackOff
-- [ ] Cluster upgrade simulation
-- [ ] Backup and restore etcd
+- [x] ImagePullBackOff
+- [x] Cluster upgrade simulation
+- [x] Backup and restore etcd
 
 ### Medium Priority
-- [ ] Ingress not routing traffic
+- [x] Ingress not routing traffic
 - [ ] Service selector mismatch
 - [ ] Init container failure
 - [ ] ConfigMap/Secret mounting issues
-- [ ] DaemonSet not scheduling on all nodes
-- [ ] StatefulSet pod not starting
+- [x] DaemonSet not scheduling on all nodes
+- [x] StatefulSet pod not starting
 - [ ] Horizontal Pod Autoscaler not scaling
 - [ ] Node affinity preventing scheduling
 
 ### Advanced
 - [ ] CNI plugin failure
-- [ ] Certificate expiration
+- [x] Certificate expiration
 - [ ] Controller manager not running
 - [ ] Multiple control plane nodes down
 - [ ] Split-brain scenario
+
+### New Ideas Welcome!
+- [ ] Job failures and debugging
+- [ ] CronJob scheduling issues
+- [ ] Pod Security Standards violations
+- [ ] Resource limits causing OOMKilled
+- [ ] Liveness/readiness probe misconfiguration
 
 ## Code Style
 
@@ -391,7 +398,6 @@ go test ./internal/labs/
 
 When adding features:
 - Update README.md if user-facing
-- Add examples to EXAMPLES.md
 - Update this CONTRIBUTING.md if it affects contributors
 - Add inline comments for complex code
 
