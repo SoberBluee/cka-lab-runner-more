@@ -91,17 +91,17 @@ jobs:
     - name: Create cluster
       run: ./cka-lab-runner up
 
+    - name: Verify cluster is accessible
+      run: kubectl get nodes
+
     - name: List labs
       run: ./cka-lab-runner lab list
 
     - name: Show solution for etcd lab
       run: ./cka-lab-runner lab solution etcd_wrong_ip
 
-    - name: Run random lab with fixed seed
-      run: ./cka-lab-runner lab random --seed 42
-
-    - name: Verify cluster is accessible
-      run: kubectl get nodes
+    - name: Run a lab (applies broken scenario)
+      run: ./cka-lab-runner lab run image_pull_backoff
 
     - name: Delete cluster
       run: ./cka-lab-runner down
