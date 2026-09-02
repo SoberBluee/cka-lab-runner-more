@@ -32,18 +32,18 @@ func (l *WebrootMissingLab) Difficulty() Difficulty {
 }
 
 func (l *WebrootMissingLab) Description() string {
-	return `Pod 'nginx' in namespace 'public-site' never becomes Ready.
-It looks like a mount/configuration problem rather than an image pull issue.
+	return `Pod 'nginx' in namespace 'public-site' is Running, but the site content
+volume is not mounted where the web server expects it.
 
-Your task: Fix the pod so it reaches Running.`
+Your task: Fix the pod configuration so the volume is mounted at the correct path.`
 }
 
 func (l *WebrootMissingLab) Hints() []string {
 	return []string{
-		"Describe the pod and check Events / container state",
-		"Compare volumeMounts names with volumes names in the pod spec",
-		"Every volumeMount.name must match a volumes[].name entry",
-		"Recreate the pod after fixing the names",
+		"Inspect the pod spec carefully — focus on volumeMounts",
+		"nginx serves files from /usr/share/nginx/html by default",
+		"Compare mountPath with where the application actually reads files",
+		"Pods usually need to be deleted and recreated after fixing mountPath",
 	}
 }
 
@@ -60,6 +60,8 @@ func (l *WebrootMissingLab) Prepare(ctx context.Context, kubeconfigPath string) 
 }
 
 func (l *WebrootMissingLab) Break(ctx context.Context, kubeconfigPath string) error {
+	// API server rejects volumeMount names that don't match volumes[].name,
+	// so break mountPath instead (valid YAML, wrong runtime config).
 	manifest := `apiVersion: v1
 kind: Namespace
 metadata:
@@ -101,8 +103,8 @@ spec:
   - name: nginx
     image: nginx:alpine
     volumeMounts:
-    - name: html
-      mountPath: /usr/share/nginx/html
+    - name: data
+      mountPath: /var/www/html
   volumes:
   - name: data
     persistentVolumeClaim:
@@ -116,14 +118,12 @@ spec:
 
 func (l *WebrootMissingLab) VerifyBroken(ctx context.Context, kubeconfigPath string) error {
 	time.Sleep(8 * time.Second)
-	phase, _ := kubectl(ctx, kubeconfigPath, "get", "pod", "nginx", "-n", "public-site",
-		"-o", "jsonpath={.status.phase}")
-	ready, _ := kubectl(ctx, kubeconfigPath, "get", "pod", "nginx", "-n", "public-site",
-		"-o", "jsonpath={.status.containerStatuses[0].ready}")
-	if strings.TrimSpace(phase) != "Running" || strings.TrimSpace(ready) != "true" {
+	mountPath, _ := kubectl(ctx, kubeconfigPath, "get", "pod", "nginx", "-n", "public-site",
+		"-o", "jsonpath={.spec.containers[0].volumeMounts[0].mountPath}")
+	if strings.TrimSpace(mountPath) != "/usr/share/nginx/html" {
 		return nil
 	}
-	return fmt.Errorf("expected nginx not Ready, got phase=%q ready=%q", phase, ready)
+	return fmt.Errorf("expected broken mountPath, got %q", mountPath)
 }
 
 func (l *WebrootMissingLab) Verify(ctx context.Context, kubeconfigPath string) error {
@@ -136,15 +136,24 @@ func (l *WebrootMissingLab) Verify(ctx context.Context, kubeconfigPath string) e
 		return fmt.Errorf("nginx pod not Running yet (status: %s)", phase)
 	}
 
+	mountPath, err := kubectl(ctx, kubeconfigPath, "get", "pod", "nginx", "-n", "public-site",
+		"-o", "jsonpath={.spec.containers[0].volumeMounts[0].mountPath}")
+	if err != nil {
+		return fmt.Errorf("failed to check mountPath: %w", err)
+	}
+	if strings.TrimSpace(mountPath) != "/usr/share/nginx/html" {
+		return fmt.Errorf("volume still mounted at %q, expected /usr/share/nginx/html", mountPath)
+	}
+
 	mountName, err := kubectl(ctx, kubeconfigPath, "get", "pod", "nginx", "-n", "public-site",
 		"-o", "jsonpath={.spec.containers[0].volumeMounts[0].name}")
 	if err != nil {
-		return fmt.Errorf("failed to check volumeMount: %w", err)
+		return fmt.Errorf("failed to check volumeMount name: %w", err)
 	}
 	volName, err := kubectl(ctx, kubeconfigPath, "get", "pod", "nginx", "-n", "public-site",
 		"-o", "jsonpath={.spec.volumes[0].name}")
 	if err != nil {
-		return fmt.Errorf("failed to check volume: %w", err)
+		return fmt.Errorf("failed to check volume name: %w", err)
 	}
 	if strings.TrimSpace(mountName) != strings.TrimSpace(volName) {
 		return fmt.Errorf("volumeMount name %q does not match volume name %q", mountName, volName)
@@ -155,22 +164,17 @@ func (l *WebrootMissingLab) Verify(ctx context.Context, kubeconfigPath string) e
 func (l *WebrootMissingLab) SolutionSteps() []SolutionStep {
 	return []SolutionStep{
 		{
-			Description: "Check pod status",
-			Command:     "kubectl get pod nginx -n public-site; kubectl describe pod nginx -n public-site | tail -30",
-			Notes:       "Look for CreateContainerConfigError / cannot find volume \"html\"",
+			Description: "Inspect the pod mounts",
+			Command:     "kubectl get pod nginx -n public-site -o yaml | grep -A6 volumeMounts",
+			Notes:       "mountPath is /var/www/html but nginx serves from /usr/share/nginx/html",
 		},
 		{
-			Description: "Compare mount and volume names",
-			Command:     "kubectl get pod nginx -n public-site -o yaml | grep -A6 'volumeMounts\\|volumes:'",
-			Notes:       "volumeMounts uses name: html but volumes defines name: data",
-		},
-		{
-			Description: "Recreate the pod with matching names",
+			Description: "Recreate the pod with the correct mountPath",
 			Command:     "kubectl delete pod nginx -n public-site && kubectl apply -f - <<'EOF'\napiVersion: v1\nkind: Pod\nmetadata:\n  name: nginx\n  namespace: public-site\nspec:\n  containers:\n  - name: nginx\n    image: nginx:alpine\n    volumeMounts:\n    - name: data\n      mountPath: /usr/share/nginx/html\n  volumes:\n  - name: data\n    persistentVolumeClaim:\n      claimName: site-content\nEOF",
 		},
 		{
 			Description: "Verify",
-			Command:     "kubectl get pod nginx -n public-site",
+			Command:     "kubectl get pod nginx -n public-site; kubectl get pod nginx -n public-site -o jsonpath='{.spec.containers[0].volumeMounts[0].mountPath}{\"\\n\"}'",
 		},
 	}
 }
