@@ -8,10 +8,10 @@ import (
 )
 
 var protectedNamespaces = map[string]bool{
-	"default":           true,
-	"kube-system":       true,
-	"kube-public":       true,
-	"kube-node-lease":   true,
+	"default":            true,
+	"kube-system":        true,
+	"kube-public":        true,
+	"kube-node-lease":    true,
 	"local-path-storage": true,
 }
 
@@ -25,8 +25,13 @@ func CleanupPreviousLabResources(ctx context.Context, kubeconfigPath string) err
 		return err
 	}
 	_ = deleteLabPersistentVolumes(ctx, kubeconfigPath)
+	_ = deleteLabCRDs(ctx, kubeconfigPath)
+	_ = deleteLabClusterRoleBindings(ctx, kubeconfigPath)
 	_ = removeLabTaints(ctx, kubeconfigPath)
+	_ = uncordonNodes(ctx, kubeconfigPath)
 	_ = restoreClusterDNSBaseline(ctx, kubeconfigPath)
+	_ = restoreKubeProxyBaseline(ctx, kubeconfigPath)
+	_ = restoreControlPlaneImages(ctx, kubeconfigPath)
 	return nil
 }
 
@@ -133,14 +138,123 @@ func deleteLabPersistentVolumes(ctx context.Context, kubeconfigPath string) erro
 	return nil
 }
 
+// labTaintKeys are taint keys applied by labs; cleanup strips them so a stale
+// taint from an abandoned lab cannot break the next one.
+var labTaintKeys = []string{
+	"dedicated",
+	"tenancy",
+	"tier",
+	"hardened",
+	"maintenance",
+}
+
 func removeLabTaints(ctx context.Context, kubeconfigPath string) error {
 	nodes, err := kubectl(ctx, kubeconfigPath, "get", "nodes", "-o", "jsonpath={.items[*].metadata.name}")
 	if err != nil {
 		return err
 	}
 	for _, node := range strings.Fields(nodes) {
-		_, _ = kubectl(ctx, kubeconfigPath, "taint", "nodes", node, "dedicated=critical:NoSchedule-", "--overwrite")
-		_, _ = kubectl(ctx, kubeconfigPath, "label", "nodes", node, "disktype-", "--overwrite")
+		for _, key := range labTaintKeys {
+			_, _ = kubectl(ctx, kubeconfigPath, "taint", "nodes", node, key+"-")
+		}
+		_, _ = kubectl(ctx, kubeconfigPath, "label", "nodes", node,
+			"disktype-", "node-type-", "node-pool-", "--overwrite")
+	}
+	return nil
+}
+
+func uncordonNodes(ctx context.Context, kubeconfigPath string) error {
+	nodes, err := kubectl(ctx, kubeconfigPath, "get", "nodes", "-o", "jsonpath={.items[*].metadata.name}")
+	if err != nil {
+		return err
+	}
+	for _, node := range strings.Fields(nodes) {
+		_, _ = kubectl(ctx, kubeconfigPath, "uncordon", node)
+	}
+	return nil
+}
+
+// labCRDNames are CustomResourceDefinitions installed by labs. They are cluster
+// scoped, so deleting lab namespaces is not enough to remove them.
+var labCRDNames = []string{
+	"retentionpolicies.ops.cka.local",
+	"backuppolicies.ops.cka.local",
+}
+
+func deleteLabCRDs(ctx context.Context, kubeconfigPath string) error {
+	for _, name := range labCRDNames {
+		_, _ = kubectl(ctx, kubeconfigPath, "delete", "crd", name, "--ignore-not-found=true", "--wait=false")
+	}
+	return nil
+}
+
+// deleteLabClusterRoleBindings removes cluster-wide bindings that grant access
+// to ServiceAccounts living in lab namespaces. Those bindings survive namespace
+// deletion and would otherwise hand a later lab permissions it should not have.
+func deleteLabClusterRoleBindings(ctx context.Context, kubeconfigPath string) error {
+	labSubjectNamespaces := map[string]bool{
+		"reporting": true,
+		"warehouse": true,
+		"edge":      true,
+		"ci":        true,
+	}
+
+	output, err := kubectl(ctx, kubeconfigPath, "get", "clusterrolebindings",
+		"-o", "jsonpath={range .items[*]}{.metadata.name}{'|'}{range .subjects[*]}{.namespace}{','}{end}{'\\n'}{end}")
+	if err != nil {
+		return err
+	}
+
+	for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
+		parts := strings.SplitN(line, "|", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		for _, ns := range strings.Split(parts[1], ",") {
+			if labSubjectNamespaces[strings.TrimSpace(ns)] {
+				_, _ = kubectl(ctx, kubeconfigPath, "delete", "clusterrolebinding", parts[0],
+					"--ignore-not-found=true", "--wait=false")
+				break
+			}
+		}
+	}
+	return nil
+}
+
+func restoreKubeProxyBaseline(ctx context.Context, kubeconfigPath string) error {
+	selector, _ := kubectl(ctx, kubeconfigPath, "get", "daemonset", "kube-proxy", "-n", "kube-system",
+		"-o", "jsonpath={.spec.template.spec.nodeSelector}")
+	if strings.Contains(selector, labProxySelectorKey) {
+		_, _ = kubectl(ctx, kubeconfigPath, "patch", "daemonset", "kube-proxy", "-n", "kube-system",
+			"--type=json", `-p=[{"op":"remove","path":"/spec/template/spec/nodeSelector/cka-lab~1proxy"}]`)
+	}
+	return nil
+}
+
+// restoreControlPlaneImages realigns control plane static pod images with the
+// API server image tag. A lab that pins a component to a mismatched tag leaves
+// the cluster unusable if the user walks away mid-exercise.
+func restoreControlPlaneImages(ctx context.Context, kubeconfigPath string) error {
+	apiserverImage, err := staticPodImage(ctx, kubeconfigPath, "kube-apiserver")
+	if err != nil {
+		return err
+	}
+	tag := imageTag(apiserverImage)
+	if tag == "" {
+		return fmt.Errorf("could not determine API server image tag")
+	}
+
+	node, err := getControlPlaneNode(ctx, kubeconfigPath)
+	if err != nil {
+		return err
+	}
+
+	for _, component := range []string{"kube-controller-manager", "kube-scheduler"} {
+		manifest := fmt.Sprintf("/etc/kubernetes/manifests/%s.yaml", component)
+		script := fmt.Sprintf(
+			"grep -q 'image: registry.k8s.io/%s:%s' %s || sed -i 's|image: registry.k8s.io/%s:.*|image: registry.k8s.io/%s:%s|' %s",
+			component, tag, manifest, component, component, tag, manifest)
+		_, _ = dockerExec(ctx, node, "sh", "-c", script)
 	}
 	return nil
 }

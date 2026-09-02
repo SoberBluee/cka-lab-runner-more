@@ -72,21 +72,19 @@ func (l *DNSUnreachableLab) Break(ctx context.Context, kubeconfigPath string) er
 
 func (l *DNSUnreachableLab) VerifyBroken(ctx context.Context, kubeconfigPath string) error {
 	time.Sleep(5 * time.Second)
-	eps, _ := kubectl(ctx, kubeconfigPath, "get", "endpoints", "kube-dns", "-n", "kube-system",
-		"-o", "jsonpath={.subsets[*].addresses[*].ip}")
-	if strings.TrimSpace(eps) == "" {
+	count, _ := endpointAddressCount(ctx, kubeconfigPath, "kube-system", "kube-dns")
+	if count == 0 {
 		return nil
 	}
-	return fmt.Errorf("expected kube-dns endpoints empty, got %q", eps)
+	return fmt.Errorf("expected kube-dns endpoints empty, got %d", count)
 }
 
 func (l *DNSUnreachableLab) Verify(ctx context.Context, kubeconfigPath string) error {
-	eps, err := kubectl(ctx, kubeconfigPath, "get", "endpoints", "kube-dns", "-n", "kube-system",
-		"-o", "jsonpath={.subsets[*].addresses[*].ip}")
+	count, err := endpointAddressCount(ctx, kubeconfigPath, "kube-system", "kube-dns")
 	if err != nil {
 		return fmt.Errorf("failed to check kube-dns endpoints: %w", err)
 	}
-	if strings.TrimSpace(eps) == "" {
+	if count == 0 {
 		return fmt.Errorf("kube-dns service still has no endpoints")
 	}
 

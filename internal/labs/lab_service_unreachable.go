@@ -111,12 +111,11 @@ func (l *ServiceUnreachableLab) VerifyBroken(ctx context.Context, kubeconfigPath
 }
 
 func (l *ServiceUnreachableLab) Verify(ctx context.Context, kubeconfigPath string) error {
-	eps, err := kubectl(ctx, kubeconfigPath, "get", "endpoints", "api", "-n", "svc-lab",
-		"-o", "jsonpath={.subsets[*].addresses[*].ip}")
+	count, err := endpointAddressCount(ctx, kubeconfigPath, "svc-lab", "api")
 	if err != nil {
 		return fmt.Errorf("failed to check endpoints: %w", err)
 	}
-	if strings.TrimSpace(eps) == "" {
+	if count == 0 {
 		return fmt.Errorf("service still has no endpoints")
 	}
 

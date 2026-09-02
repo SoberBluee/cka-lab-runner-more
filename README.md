@@ -48,7 +48,10 @@ cka-lab-runner lab solution pod_crashloop
 cka-lab-runner down
 ```
 
-## Available Labs (41)
+## Available Labs (62)
+
+Lab IDs and titles describe the **symptom**, not the root cause — the same way a ticket
+would reach you on the job. Don't read the category column if you want a cold diagnosis.
 
 ### Control Plane
 - **etcd_wrong_ip** (Medium, 25min) - Fix API server → etcd communication
@@ -61,6 +64,10 @@ cka-lab-runner down
 - **cluster_upgrade** (Hard, 30min) - Cluster upgrade simulation
 - **etcd_backup_restore** (Hard, 30min) - etcd backup and restore
 - **kubelet_stopped** (Medium, 20min) - Fix stopped kubelet service
+- **maintenance_window_prep** (Medium, 20min) - Hand a node over for a maintenance window
+- **fleet_records_mismatch** (Medium, 20min) - Correct an inventory record against the live cluster
+- **recovery_point_missing** (Hard, 30min) - Produce a verifiable point-in-time copy of cluster state
+- **config_history_recovery** (Hard, 30min) - Rebuild state from a prior copy after a bad delete
 
 ### Scheduling (Pending pods — exam style)
 - **app_pods_pending** (Medium, 15min) - Deployment pods stuck Pending (investigate)
@@ -68,6 +75,8 @@ cka-lab-runner down
 - **api_pods_pending** (Medium, 20min) - API pods stuck Pending (investigate)
 - **batch_pods_pending** (Medium, 15min) - Batch pods stuck Pending (investigate)
 - **job_pod_pending** (Easy, 10min) - Single pod stuck Pending (investigate)
+- **tenant_pods_repelled** (Medium, 15min) - Billing pods never land on a node
+- **analytics_pods_unscheduled** (Hard, 20min) - Placement config present but still Pending
 
 ### Networking
 - **network_policy_blocking** (Medium, 20min) - Fix NetworkPolicy blocking traffic
@@ -76,6 +85,17 @@ cka-lab-runner down
 - **ingress_broken** (Medium, 20min) - Fix Ingress configuration
 - **service_unreachable** (Medium, 15min) - Fix Service with no backends
 - **service_wrong_port** (Medium, 15min) - Fix Service port mismatch
+- **payments_api_unreachable** (Medium, 20min) - Storefront checkout calls time out
+- **outbound_sync_failing** (Hard, 25min) - Worker cannot resolve or reach its vendor
+- **metrics_endpoint_timeout** (Medium, 20min) - Scraper times out on one target only
+- **partner_isolation_required** (Hard, 25min) - Restrict an API to one partner namespace (authoring)
+- **dispatch_calls_refused** (Medium, 20min) - Calls refused although pods are Running
+- **catalog_lookup_refused** (Medium, 15min) - Lookups fail right after a rename
+- **retail_rollout_unreachable** (Hard, 30min) - Only newly created Services are unreachable
+
+> The NetworkPolicy labs need a CNI that actually enforces policies. If a policy lab is
+> already "solved" the moment it starts, your cluster is ignoring NetworkPolicies — create
+> the cluster with a policy-enforcing CNI (for example Calico on kind) before drilling them.
 
 ### DNS
 - **coredns_broken_config** (Easy, 15min) - Fix CoreDNS configuration
@@ -97,6 +117,9 @@ cka-lab-runner down
 - **rbac_permission_denied** (Medium, 20min) - Fix missing Role permissions
 - **rbac_sa_denied** (Medium, 20min) - Fix ServiceAccount Deployment permissions
 - **rbac_binding_broken** (Hard, 20min) - Fix broken RoleBinding roleRef
+- **inventory_sync_unauthorized** (Medium, 20min) - Workload rejected by the API
+- **agent_identity_lost** (Medium, 15min) - Pod cannot find its credentials
+- **fleet_report_forbidden** (Hard, 25min) - Report only sees one namespace (least privilege)
 
 ### Security
 - **cert_expiration** (Hard, 25min) - Check certificate expiration
@@ -106,6 +129,41 @@ cka-lab-runner down
 - **image_pull_backoff** (Easy, 10min) - Fix image name typo
 - **statefulset_broken** (Medium, 25min) - Fix StatefulSet configuration
 - **daemonset_not_scheduled** (Medium, 20min) - Fix DaemonSet scheduling
+- **deployments_not_progressing** (Hard, 30min) - New Deployments never create pods
+- **agent_rollout_incomplete** (Medium, 20min) - Agent covers zero nodes
+- **collector_skipping_nodes** (Hard, 25min) - Collector deployed but collecting nothing
+- **retention_object_rejected** (Medium, 20min) - Team manifest rejected as unknown kind
+- **backup_policy_incomplete** (Medium, 20min) - Stored object no longer passes validation
+
+## Drill Sets
+
+Repetition beats reading for the procedural parts of the exam. Run each set start to finish,
+then run it again from a fresh cluster until the commands come without thinking.
+
+Work through a set one lab at a time — `lab run` wipes the previous lab's resources, so only
+start the next lab after verifying the current one.
+
+**Cluster lifecycle and state recovery** (the set worth repeating five times):
+`maintenance_window_prep`, `fleet_records_mismatch`, `recovery_point_missing`,
+`config_history_recovery`, `deployments_not_progressing`, `etcd_backup_restore`,
+`cluster_upgrade`
+
+**Node assignment — taints, tolerations, DaemonSets:**
+`tenant_pods_repelled`, `analytics_pods_unscheduled`, `agent_rollout_incomplete`,
+`collector_skipping_nodes`, `daemonset_not_scheduled`
+
+**Traffic — policies first, then general connectivity:**
+`payments_api_unreachable`, `metrics_endpoint_timeout`, `outbound_sync_failing`,
+`partner_isolation_required`, `dispatch_calls_refused`, `catalog_lookup_refused`,
+`retail_rollout_unreachable`
+
+**Pod identity and permissions:**
+`inventory_sync_unauthorized`, `agent_identity_lost`, `fleet_report_forbidden`
+
+**API extensions:** `retention_object_rejected`, `backup_policy_incomplete`
+
+Time yourself: `lab run` starts a timer that `lab verify` stops, and `lab list` shows your
+solve time per lab so you can see the repetitions getting faster.
 
 ## Commands
 
