@@ -48,27 +48,40 @@ cka-lab-runner lab solution pod_crashloop
 cka-lab-runner down
 ```
 
-## Available Labs (15)
+## Available Labs (28)
 
 ### Control Plane
 - **etcd_wrong_ip** (Medium, 25min) - Fix API server → etcd communication
 - **scheduler_not_running** (Medium, 20min) - Debug broken kube-scheduler
+- **scheduler_unavailable** (Easy, 15min) - Debug unavailable kube-scheduler
+- **scheduler_unhealthy** (Easy, 15min) - Debug unhealthy kube-scheduler
+- **scheduler_degraded** (Hard, 25min) - Debug degraded kube-scheduler
+- **scheduler_failing** (Hard, 25min) - Debug failing kube-scheduler
+- **scheduler_offline** (Hard, 30min) - Debug offline kube-scheduler
 - **cluster_upgrade** (Hard, 30min) - Cluster upgrade simulation
 - **etcd_backup_restore** (Hard, 30min) - etcd backup and restore
 - **kubelet_stopped** (Medium, 20min) - Fix stopped kubelet service
 
 ### Networking
 - **network_policy_blocking** (Medium, 20min) - Fix NetworkPolicy blocking traffic
+- **netpol_dns_blocked** (Hard, 25min) - Fix DNS blocked by NetworkPolicy
+- **netpol_namespace_isolation** (Hard, 25min) - Fix cross-namespace NetworkPolicy
 - **ingress_broken** (Medium, 20min) - Fix Ingress configuration
+- **service_unreachable** (Medium, 15min) - Fix Service with no backends
+- **service_wrong_port** (Medium, 15min) - Fix Service port mismatch
 
 ### DNS
 - **coredns_broken_config** (Easy, 15min) - Fix CoreDNS configuration
 
 ### Storage
 - **pvc_pending** (Medium, 20min) - Debug PVC stuck in Pending
+- **storage_claim_pending** (Medium, 20min) - Fix StorageClass mismatch on claim
+- **storage_pod_pending** (Medium, 15min) - Fix pod waiting on volume claim
 
 ### RBAC
 - **rbac_permission_denied** (Medium, 20min) - Fix missing Role permissions
+- **rbac_sa_denied** (Medium, 20min) - Fix ServiceAccount Deployment permissions
+- **rbac_binding_broken** (Hard, 20min) - Fix broken RoleBinding roleRef
 
 ### Security
 - **cert_expiration** (Hard, 25min) - Check certificate expiration
