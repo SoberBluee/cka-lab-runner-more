@@ -103,7 +103,7 @@ func cleanupDefaultNamespace(ctx context.Context, kubeconfigPath string) error {
 }
 
 func deleteLabPersistentVolumes(ctx context.Context, kubeconfigPath string) error {
-	known := []string{"local-pv", "db-pv", "app-pv"}
+	known := []string{"local-pv", "db-pv", "app-pv", "finance-db-pv", "caching-redis-pv", "public-site-pv"}
 	for _, name := range known {
 		_, _ = kubectl(ctx, kubeconfigPath, "delete", "pv", name, "--ignore-not-found=true", "--wait=false")
 	}

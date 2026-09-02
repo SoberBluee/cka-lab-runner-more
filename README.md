@@ -48,7 +48,7 @@ cka-lab-runner lab solution pod_crashloop
 cka-lab-runner down
 ```
 
-## Available Labs (37)
+## Available Labs (41)
 
 ### Control Plane
 - **etcd_wrong_ip** (Medium, 25min) - Fix API server → etcd communication
@@ -88,6 +88,10 @@ cka-lab-runner down
 - **pvc_pending** (Medium, 20min) - Debug PVC stuck in Pending
 - **storage_claim_pending** (Medium, 20min) - Fix StorageClass mismatch on claim
 - **storage_pod_pending** (Medium, 15min) - Fix pod waiting on volume claim
+- **database_unavailable** (Medium, 20min) - Database pod stuck Pending
+- **cache_service_down** (Medium, 20min) - Cache deployment pods stuck Pending
+- **webroot_missing** (Easy, 15min) - Web pod fails to become Ready
+- **replica_pods_stuck** (Hard, 25min) - StatefulSet ordered pods stuck Pending
 
 ### RBAC
 - **rbac_permission_denied** (Medium, 20min) - Fix missing Role permissions
