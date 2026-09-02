@@ -12,6 +12,7 @@ import (
 	"github.com/CuriousLearner/cka-lab-runner/internal/cluster"
 	"github.com/CuriousLearner/cka-lab-runner/internal/config"
 	"github.com/CuriousLearner/cka-lab-runner/internal/labs"
+	"github.com/CuriousLearner/cka-lab-runner/internal/progress"
 
 	// Import labs to register them
 	_ "github.com/CuriousLearner/cka-lab-runner/internal/labs"
@@ -180,7 +181,11 @@ var labListCmd = &cobra.Command{
 			}
 		}
 
-		cli.PrintLabList(filteredLabs)
+		store, err := progress.Load(progress.DefaultFile)
+		if err != nil {
+			return err
+		}
+		cli.PrintLabList(filteredLabs, store)
 		return nil
 	},
 }
@@ -210,7 +215,7 @@ var labRunCmd = &cobra.Command{
 			return fmt.Errorf("creating provider: %w", err)
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
 		defer cancel()
 
 		// Check if cluster exists
@@ -229,6 +234,16 @@ var labRunCmd = &cobra.Command{
 			return fmt.Errorf("getting kubeconfig: %w", err)
 		}
 
+		cli.Info("Cleaning up resources from previous labs...")
+		cleanupCtx, cleanupCancel := context.WithTimeout(ctx, 2*time.Minute)
+		err = labs.CleanupPreviousLabResources(cleanupCtx, kubeconfigPath)
+		cleanupCancel()
+		if err != nil {
+			cli.Warning(fmt.Sprintf("Cleanup had issues (continuing): %v", err))
+		} else {
+			cli.Success("Previous lab resources cleaned up")
+		}
+
 		// Prepare the lab
 		cli.Info("Preparing lab environment...")
 		if err := lab.Prepare(ctx, kubeconfigPath); err != nil {
@@ -244,6 +259,18 @@ var labRunCmd = &cobra.Command{
 		// Verify broken state
 		if err := lab.VerifyBroken(ctx, kubeconfigPath); err != nil {
 			cli.Warning(fmt.Sprintf("Verify broken step failed (may be optional): %v", err))
+		}
+
+		store, err := progress.Load(progress.DefaultFile)
+		if err != nil {
+			cli.Warning(fmt.Sprintf("Could not load progress for timer: %v", err))
+		} else {
+			store.StartTimer(labID)
+			if err := progress.Save(store, progress.DefaultFile); err != nil {
+				cli.Warning(fmt.Sprintf("Could not start timer: %v", err))
+			} else {
+				cli.Info("Timer started — it stops when you successfully verify this lab")
+			}
 		}
 
 		// Print lab details
@@ -373,7 +400,55 @@ var labVerifyCmd = &cobra.Command{
 			return nil
 		}
 
+		store, err := progress.Load(progress.DefaultFile)
+		if err != nil {
+			return err
+		}
+		elapsed := store.MarkComplete(labID)
+		if err := progress.Save(store, progress.DefaultFile); err != nil {
+			cli.Warning(fmt.Sprintf("Could not save progress: %v", err))
+		} else {
+			cli.Info(fmt.Sprintf("Progress saved (%d labs completed)", store.Count()))
+			cli.Info(fmt.Sprintf("Time: %s", progress.FormatDuration(elapsed)))
+		}
+
 		cli.Success(fmt.Sprintf("Congratulations! You successfully fixed: %s", lab.Title()))
+		return nil
+	},
+}
+
+var labResetProgressCmd = &cobra.Command{
+	Use:   "reset-progress",
+	Short: "Clear completed lab progress",
+	Long:  `Clears the local progress file so all labs show as incomplete in 'lab list'.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		labID, err := cmd.Flags().GetString("lab")
+		if err != nil {
+			return err
+		}
+
+		store, err := progress.Load(progress.DefaultFile)
+		if err != nil {
+			return err
+		}
+
+		if labID != "" {
+			if _, err := labs.Get(labID); err != nil {
+				return err
+			}
+			store.MarkIncomplete(labID)
+			if err := progress.Save(store, progress.DefaultFile); err != nil {
+				return err
+			}
+			cli.Success(fmt.Sprintf("Marked lab incomplete: %s", labID))
+			return nil
+		}
+
+		store.Clear()
+		if err := progress.Save(store, progress.DefaultFile); err != nil {
+			return err
+		}
+		cli.Success("Cleared all lab progress")
 		return nil
 	},
 }
@@ -400,12 +475,15 @@ func init() {
 	rootCmd.AddCommand(downCmd)
 	rootCmd.AddCommand(labCmd)
 
+	labResetProgressCmd.Flags().String("lab", "", "Clear progress for a single lab ID only")
+
 	// Add subcommands to lab
 	labCmd.AddCommand(labListCmd)
 	labCmd.AddCommand(labRunCmd)
 	labCmd.AddCommand(labSolutionCmd)
 	labCmd.AddCommand(labRandomCmd)
 	labCmd.AddCommand(labVerifyCmd)
+	labCmd.AddCommand(labResetProgressCmd)
 }
 
 func loadConfig() error {

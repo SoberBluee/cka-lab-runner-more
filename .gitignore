@@ -20,6 +20,7 @@ bin/
 
 # Config files (user-specific)
 cka-lab-runner.yaml
+cka-lab-progress.yaml
 
 # IDE
 .idea/

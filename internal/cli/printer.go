@@ -5,27 +5,42 @@ import (
 	"strings"
 
 	"github.com/CuriousLearner/cka-lab-runner/internal/labs"
+	"github.com/CuriousLearner/cka-lab-runner/internal/progress"
 )
 
-// PrintLabList prints a formatted list of labs
-func PrintLabList(labList []labs.Lab) {
+// PrintLabList prints a formatted list of labs with completion and timer columns.
+func PrintLabList(labList []labs.Lab, store *progress.Store) {
 	if len(labList) == 0 {
 		fmt.Println("No labs available.")
 		return
 	}
+	if store == nil {
+		store = &progress.Store{}
+	}
 
-	fmt.Printf("%-25s %-40s %-18s %-10s\n", "ID", "Title", "Category", "Difficulty")
-	fmt.Println(strings.Repeat("─", 95))
+	fmt.Printf("%-6s %-10s %-28s %-36s %-16s %-10s\n", "Done", "Time", "ID", "Title", "Category", "Difficulty")
+	fmt.Println(strings.Repeat("─", 112))
 
+	doneCount := 0
 	for _, lab := range labList {
 		info := labs.GetInfo(lab)
-		fmt.Printf("%-25s %-40s %-18s %-10s\n",
+		complete, timeCol := store.Status(info.ID)
+		mark := "✗"
+		if complete {
+			mark = "✓"
+			doneCount++
+		}
+		fmt.Printf("%-6s %-10s %-28s %-36s %-16s %-10s\n",
+			mark,
+			truncate(timeCol, 10),
 			info.ID,
-			truncate(info.Title, 38),
+			truncate(info.Title, 34),
 			info.Category,
 			info.Difficulty,
 		)
 	}
+	fmt.Println(strings.Repeat("─", 112))
+	fmt.Printf("Progress: %d/%d completed  (* = timer running)\n", doneCount, len(labList))
 }
 
 // PrintLabDetails prints detailed information about a lab

@@ -73,3 +73,34 @@ func WaitForClusterReady(ctx context.Context, kubeconfigPath string) error {
 	}
 	return fmt.Errorf("cluster did not become ready in time")
 }
+
+func waitDNSPodsReady(ctx context.Context, kubeconfigPath string) error {
+	deadline := time.Now().Add(90 * time.Second)
+	for time.Now().Before(deadline) {
+		phases, err := kubectl(ctx, kubeconfigPath, "get", "pods", "-n", "kube-system",
+			"-l", "k8s-app=kube-dns",
+			"-o", "jsonpath={.items[*].status.phase}")
+		if err == nil {
+			fields := strings.Fields(phases)
+			if len(fields) > 0 {
+				allRunning := true
+				for _, p := range fields {
+					if p != "Running" {
+						allRunning = false
+						break
+					}
+				}
+				if allRunning {
+					ready, _ := kubectl(ctx, kubeconfigPath, "get", "pods", "-n", "kube-system",
+						"-l", "k8s-app=kube-dns",
+						"-o", "jsonpath={.items[*].status.containerStatuses[*].ready}")
+					if strings.Contains(ready, "true") && !strings.Contains(ready, "false") {
+						return nil
+					}
+				}
+			}
+		}
+		time.Sleep(3 * time.Second)
+	}
+	return fmt.Errorf("DNS pods not ready in time")
+}

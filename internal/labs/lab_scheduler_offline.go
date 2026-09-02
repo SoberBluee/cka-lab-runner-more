@@ -67,20 +67,27 @@ func (l *SchedulerOfflineLab) Break(ctx context.Context, kubeconfigPath string) 
 
 	containerName := nodeName
 
-	// Move the real kubeconfig aside. The volume uses FileOrCreate, so kubelet
-	// recreates an empty scheduler.conf and the scheduler fails to authenticate.
-	_, err = dockerExec(ctx, containerName, "mv",
-		"/etc/kubernetes/scheduler.conf",
-		"/etc/kubernetes/scheduler.conf.bak")
+	// Preserve the real kubeconfig, then leave an empty placeholder at the
+	// original path. FileOrCreate / hostPath will mount the empty file.
+	breakCmd := `
+set -e
+if [ -f /etc/kubernetes/scheduler.conf ] && [ ! -f /etc/kubernetes/scheduler.conf.bak ]; then
+  cp /etc/kubernetes/scheduler.conf /etc/kubernetes/scheduler.conf.bak
+fi
+if [ -f /etc/kubernetes/scheduler.conf.bak ]; then
+  : > /etc/kubernetes/scheduler.conf
+else
+  mv /etc/kubernetes/scheduler.conf /etc/kubernetes/scheduler.conf.bak
+  : > /etc/kubernetes/scheduler.conf
+fi
+# touch alone does not restart static pods — move the manifest out/in
+mv /etc/kubernetes/manifests/kube-scheduler.yaml /tmp/kube-scheduler.yaml
+sleep 3
+mv /tmp/kube-scheduler.yaml /etc/kubernetes/manifests/kube-scheduler.yaml
+`
+	_, err = dockerExec(ctx, containerName, "sh", "-c", breakCmd)
 	if err != nil {
-		return fmt.Errorf("moving scheduler kubeconfig: %w", err)
-	}
-
-	// Touch the static pod manifest so kubelet restarts and FileOrCreate runs
-	_, err = dockerExec(ctx, containerName, "sh", "-c",
-		"touch /etc/kubernetes/manifests/kube-scheduler.yaml")
-	if err != nil {
-		return fmt.Errorf("touching scheduler manifest: %w", err)
+		return fmt.Errorf("breaking scheduler kubeconfig: %w", err)
 	}
 
 	return nil
@@ -88,6 +95,14 @@ func (l *SchedulerOfflineLab) Break(ctx context.Context, kubeconfigPath string) 
 
 func (l *SchedulerOfflineLab) VerifyBroken(ctx context.Context, kubeconfigPath string) error {
 	time.Sleep(15 * time.Second)
+
+	// Scheduler should not be Running
+	phase, _ := kubectl(ctx, kubeconfigPath, "get", "pods", "-n", "kube-system",
+		"-l", "component=kube-scheduler",
+		"-o", "jsonpath={.items[*].status.phase}")
+	if strings.Contains(phase, "Running") {
+		return fmt.Errorf("scheduler still running after break (phases: %s)", phase)
+	}
 
 	testPod := `apiVersion: v1
 kind: Pod
@@ -109,7 +124,7 @@ spec:
 		return nil
 	}
 
-	return nil
+	return fmt.Errorf("expected test pod to stay Pending, got %q", strings.TrimSpace(output))
 }
 
 func (l *SchedulerOfflineLab) Verify(ctx context.Context, kubeconfigPath string) error {
@@ -183,12 +198,13 @@ func (l *SchedulerOfflineLab) SolutionSteps() []SolutionStep {
 		},
 		{
 			Description: "Restore the real scheduler kubeconfig",
-			Command:     "mv /etc/kubernetes/scheduler.conf.bak /etc/kubernetes/scheduler.conf",
-			Notes:       "If an empty scheduler.conf exists, remove or overwrite it with the backup first",
+			Command:     "cp /etc/kubernetes/scheduler.conf.bak /etc/kubernetes/scheduler.conf",
+			Notes:       "Overwrite the empty placeholder with the backup",
 		},
 		{
-			Description: "Force the static pod to reload if needed",
-			Command:     "touch /etc/kubernetes/manifests/kube-scheduler.yaml",
+			Description: "Force the static pod to reload",
+			Command:     "mv /etc/kubernetes/manifests/kube-scheduler.yaml /tmp/ && sleep 2 && mv /tmp/kube-scheduler.yaml /etc/kubernetes/manifests/",
+			Notes:       "touch alone may not restart the static pod",
 		},
 		{
 			Description: "Verify the scheduler is running",

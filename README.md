@@ -48,7 +48,7 @@ cka-lab-runner lab solution pod_crashloop
 cka-lab-runner down
 ```
 
-## Available Labs (28)
+## Available Labs (37)
 
 ### Control Plane
 - **etcd_wrong_ip** (Medium, 25min) - Fix API server → etcd communication
@@ -62,6 +62,13 @@ cka-lab-runner down
 - **etcd_backup_restore** (Hard, 30min) - etcd backup and restore
 - **kubelet_stopped** (Medium, 20min) - Fix stopped kubelet service
 
+### Scheduling (Pending pods — exam style)
+- **app_pods_pending** (Medium, 15min) - Deployment pods stuck Pending (investigate)
+- **web_pods_pending** (Easy, 15min) - Frontend pods stuck Pending (investigate)
+- **api_pods_pending** (Medium, 20min) - API pods stuck Pending (investigate)
+- **batch_pods_pending** (Medium, 15min) - Batch pods stuck Pending (investigate)
+- **job_pod_pending** (Easy, 10min) - Single pod stuck Pending (investigate)
+
 ### Networking
 - **network_policy_blocking** (Medium, 20min) - Fix NetworkPolicy blocking traffic
 - **netpol_dns_blocked** (Hard, 25min) - Fix DNS blocked by NetworkPolicy
@@ -72,6 +79,10 @@ cka-lab-runner down
 
 ### DNS
 - **coredns_broken_config** (Easy, 15min) - Fix CoreDNS configuration
+- **service_discovery_broken** (Medium, 20min) - Service DNS names fail to resolve
+- **external_lookups_failing** (Medium, 20min) - External DNS lookups fail from pods
+- **lookups_timing_out** (Easy, 15min) - DNS lookups hang or time out
+- **dns_unreachable** (Hard, 20min) - Cluster DNS unreachable despite healthy pods
 
 ### Storage
 - **pvc_pending** (Medium, 20min) - Debug PVC stuck in Pending
@@ -108,9 +119,13 @@ cka-lab-runner lab list --difficulty easy         # Filter by difficulty
 cka-lab-runner lab random                         # Random lab
 cka-lab-runner lab random --category storage      # Random lab in category
 cka-lab-runner lab run <lab-id>                   # Run a lab
-cka-lab-runner lab verify <lab-id>                # Verify your fix
+cka-lab-runner lab verify <lab-id>                # Verify your fix (marks complete + stops timer)
 cka-lab-runner lab solution <lab-id>              # Show solution
+cka-lab-runner lab reset-progress                 # Clear all completion progress
+cka-lab-runner lab reset-progress --lab <lab-id>  # Clear one lab's progress
 ```
+
+Progress is stored in `cka-lab-progress.yaml` (gitignored). Successful `lab verify` marks a lab done and records your solve time; `lab list` shows ✓ / ✗ and a **Time** column (`*` means the timer is still running).
 
 ## Adding Your Own Labs
 
