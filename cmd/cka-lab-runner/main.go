@@ -373,7 +373,7 @@ var labVerifyCmd = &cobra.Command{
 			return fmt.Errorf("creating provider: %w", err)
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 
 		// Check if cluster exists

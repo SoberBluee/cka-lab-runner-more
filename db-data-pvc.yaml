@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"PersistentVolumeClaim","metadata":{"annotations":{},"name":"db-data","namespace":"storage-lab"},"spec":{"accessModes":["ReadWriteOnce"],"resources":{"requests":{"storage":"1Gi"}},"storageClassName":"exam-storage"}}
+  creationTimestamp: "2026-09-08T15:06:57Z"
+  finalizers:
+  - kubernetes.io/pvc-protection
+  name: db-data
+  namespace: storage-lab
+  resourceVersion: "29777"
+  uid: bd571f9a-c3b0-4178-8cdc-7c00860087a8
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: exam-storage
+  volumeMode: Filesystem
+status:
+  phase: Pending

@@ -299,6 +299,32 @@ data:
     }
 `
 	_ = kubectlApply(ctx, kubeconfigPath, corefile)
+
+	volume, _ := kubectl(ctx, kubeconfigPath, "get", "deployment", "coredns", "-n", "kube-system",
+		"-o", "jsonpath={.spec.template.spec.volumes[0].name}")
+	volumeName := strings.TrimSpace(volume)
+	if volumeName == "" {
+		volumeName = "config-volume"
+	}
+	_, _ = kubectl(ctx, kubeconfigPath, "patch", "deployment", "coredns", "-n", "kube-system",
+		"-p", fmt.Sprintf(`{"spec":{"template":{"spec":{"volumes":[{"name":%q,"configMap":{"name":"coredns","items":[{"key":"Corefile","path":"Corefile"}]}}]}}}}`, volumeName))
+
+	clusterRole := `apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: "system:coredns"
+  labels:
+    kubernetes.io/bootstrapping: rbac-defaults
+rules:
+- apiGroups: [""]
+  resources: ["endpoints", "services", "pods", "namespaces"]
+  verbs: ["list", "watch"]
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["list", "watch"]
+`
+	_ = kubectlApply(ctx, kubeconfigPath, clusterRole)
+
 	_, _ = kubectl(ctx, kubeconfigPath, "rollout", "restart", "deployment", "coredns", "-n", "kube-system")
 	return nil
 }

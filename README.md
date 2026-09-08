@@ -48,7 +48,7 @@ cka-lab-runner lab solution pod_crashloop
 cka-lab-runner down
 ```
 
-## Available Labs (62)
+## Available Labs (67)
 
 Lab IDs and titles describe the **symptom**, not the root cause — the same way a ticket
 would reach you on the job. Don't read the category column if you want a cold diagnosis.
@@ -103,6 +103,11 @@ would reach you on the job. Don't read the category column if you want a cold di
 - **external_lookups_failing** (Medium, 20min) - External DNS lookups fail from pods
 - **lookups_timing_out** (Easy, 15min) - DNS lookups hang or time out
 - **dns_unreachable** (Hard, 20min) - Cluster DNS unreachable despite healthy pods
+- **app_cannot_resolve_services** (Medium, 20min) - One workload cannot resolve Services while the rest of the cluster is fine
+- **edge_agent_resolution_failing** (Medium, 20min) - A host-network pod resolves nothing from the cluster
+- **dns_pods_restarting** (Hard, 25min) - DNS pods crash-loop although the Corefile is valid
+- **dns_pods_never_ready** (Hard, 30min) - DNS pods stay Running but never Ready, so kube-dns has no endpoints
+- **legacy_hostname_unresolvable** (Medium, 25min) - Add a static record to cluster DNS without regressing anything else
 
 ### Storage
 - **pvc_pending** (Medium, 20min) - Debug PVC stuck in Pending

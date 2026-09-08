@@ -331,6 +331,54 @@ func etcdPKIArgs() []string {
 	}
 }
 
+// waitForReadyPod returns a Ready pod matching the selector, skipping pods that
+// are terminating so a verify run after a rollout does not inspect the old pod.
+func waitForReadyPod(ctx context.Context, kubeconfigPath, namespace, selector string) (string, error) {
+	var pod string
+	err := waitFor(ctx, 90*time.Second, func() error {
+		output, err := kubectl(ctx, kubeconfigPath, "get", "pods", "-n", namespace, "-l", selector,
+			"--field-selector=status.phase=Running", "--no-headers",
+			"-o", "custom-columns=NAME:.metadata.name,DEL:.metadata.deletionTimestamp,READY:.status.containerStatuses[0].ready")
+		if err != nil {
+			return fmt.Errorf("listing pods %s in %s: %w", selector, namespace, err)
+		}
+		for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
+			fields := strings.Fields(line)
+			if len(fields) == 3 && fields[1] == "<none>" && fields[2] == "true" {
+				pod = fields[0]
+				return nil
+			}
+		}
+		return fmt.Errorf("no ready pod matching %s in namespace %s", selector, namespace)
+	})
+	if err != nil {
+		return "", err
+	}
+	return pod, nil
+}
+
+// dnsLookupFromTempPod runs nslookup from a throwaway busybox pod. The pod name
+// must be unique per lab so concurrent or repeated verifies cannot collide.
+func dnsLookupFromTempPod(ctx context.Context, kubeconfigPath, podName, target string) (string, error) {
+	// A verify that timed out leaves the pod behind, and kubectl run would then
+	// fail with "already exists" instead of reporting the lookup result.
+	_, _ = kubectl(ctx, kubeconfigPath, "delete", "pod", podName, "--ignore-not-found",
+		"--force", "--grace-period=0")
+	return kubectl(ctx, kubeconfigPath, "run", podName, "--image=busybox:1.28",
+		"--rm", "-i", "--restart=Never", "--", "nslookup", target)
+}
+
+// dnsLookupAnswered reports whether busybox nslookup output contains an answer
+// section. A failed lookup still prints the server address, so the presence of
+// "Name:" is what distinguishes success from NXDOMAIN or a timeout.
+func dnsLookupAnswered(output string) bool {
+	lower := strings.ToLower(output)
+	if strings.Contains(lower, "can't resolve") || strings.Contains(lower, "no answer") {
+		return false
+	}
+	return strings.Contains(output, "Name:")
+}
+
 func waitDNSPodsReady(ctx context.Context, kubeconfigPath string) error {
 	deadline := time.Now().Add(90 * time.Second)
 	for time.Now().Before(deadline) {
