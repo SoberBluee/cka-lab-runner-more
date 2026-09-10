@@ -1,6 +1,9 @@
 package labs
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestEveryLabHasUsableMetadata(t *testing.T) {
 	validCategories := map[Category]bool{
@@ -36,7 +39,19 @@ func TestEveryLabHasUsableMetadata(t *testing.T) {
 		if lab.EstimatedTime() <= 0 {
 			t.Errorf("%s: estimated time must be positive", id)
 		}
-		if len(lab.Hints()) == 0 {
+		// Exam-style labs (cka-lab-author skill) must not ship hints.
+		desc := lab.Description()
+		if strings.Contains(desc, "[Weight:") {
+			if len(lab.Hints()) != 0 {
+				t.Errorf("%s: exam-style lab must not include hints", id)
+			}
+			if !strings.Contains(desc, "kubectl config use-context") {
+				t.Errorf("%s: exam-style lab must include kubectl config use-context", id)
+			}
+			if !strings.Contains(desc, "Time limit:") {
+				t.Errorf("%s: exam-style lab must include a time limit", id)
+			}
+		} else if len(lab.Hints()) == 0 {
 			t.Errorf("%s: no hints", id)
 		}
 		if len(lab.SolutionSteps()) == 0 {

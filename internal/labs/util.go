@@ -379,6 +379,25 @@ func dnsLookupAnswered(output string) bool {
 	return strings.Contains(output, "Name:")
 }
 
+// assertNoDebugPods fails if common temporary debug pod names remain in a namespace.
+func assertNoDebugPods(ctx context.Context, kubeconfigPath, namespace string) error {
+	blocked := map[string]bool{
+		"tmp": true, "test": true, "debug": true, "curl": true,
+		"wget": true, "client": true, "netshoot": true, "busybox": true,
+	}
+	output, err := kubectl(ctx, kubeconfigPath, "get", "pods", "-n", namespace,
+		"-o", "jsonpath={.items[*].metadata.name}")
+	if err != nil {
+		return nil
+	}
+	for _, name := range strings.Fields(output) {
+		if blocked[name] {
+			return fmt.Errorf("temporary debug pod %q still present in namespace %s — delete it", name, namespace)
+		}
+	}
+	return nil
+}
+
 func waitDNSPodsReady(ctx context.Context, kubeconfigPath string) error {
 	deadline := time.Now().Add(90 * time.Second)
 	for time.Now().Before(deadline) {

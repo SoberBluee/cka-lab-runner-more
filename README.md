@@ -48,7 +48,7 @@ cka-lab-runner lab solution pod_crashloop
 cka-lab-runner down
 ```
 
-## Available Labs (67)
+## Available Labs (73)
 
 Lab IDs and titles describe the **symptom**, not the root cause — the same way a ticket
 would reach you on the job. Don't read the category column if you want a cold diagnosis.
@@ -92,6 +92,7 @@ would reach you on the job. Don't read the category column if you want a cold di
 - **dispatch_calls_refused** (Medium, 20min) - Calls refused although pods are Running
 - **catalog_lookup_refused** (Medium, 15min) - Lookups fail right after a rename
 - **retail_rollout_unreachable** (Hard, 30min) - Only newly created Services are unreachable
+- **orders_no_backends** (Medium, 7min) - Orders Service has no backends [Weight: 6%]
 
 > The NetworkPolicy labs need a CNI that actually enforces policies. If a policy lab is
 > already "solved" the moment it starts, your cluster is ignoring NetworkPolicies — create
@@ -125,6 +126,7 @@ would reach you on the job. Don't read the category column if you want a cold di
 - **inventory_sync_unauthorized** (Medium, 20min) - Workload rejected by the API
 - **agent_identity_lost** (Medium, 15min) - Pod cannot find its credentials
 - **fleet_report_forbidden** (Hard, 25min) - Report only sees one namespace (least privilege)
+- **apps_developer_access** (Medium, 8min) - Onboard developer API access [Weight: 5%]
 
 ### Security
 - **cert_expiration** (Hard, 25min) - Check certificate expiration
@@ -139,6 +141,16 @@ would reach you on the job. Don't read the category column if you want a cold di
 - **collector_skipping_nodes** (Hard, 25min) - Collector deployed but collecting nothing
 - **retention_object_rejected** (Medium, 20min) - Team manifest rejected as unknown kind
 - **backup_policy_incomplete** (Medium, 20min) - Stored object no longer passes validation
+- **ops_health_snapshot** (Hard, 10min) - Ops health snapshot incomplete [Weight: 8%]
+
+### Helm (CKA 2025+)
+- **webshop_release_broken** (Medium, 10min) - Bad upgrade; restore with Helm rollback [Weight: 7%]
+- **portal_chart_missing** (Medium, 10min) - Install a provided chart with exact values [Weight: 6%]
+- **billing_values_drift** (Hard, 12min) - Fix drifted Helm values via upgrade + values file [Weight: 8%]
+
+> Helm labs require the `helm` CLI on your workstation. Charts are embedded and synced to
+> `/opt/CKA/charts/cka-webapp` on the kind node and mirrored at `/tmp/opt/CKA/charts/cka-webapp`
+> for local `helm install`/`upgrade` commands.
 
 ## Drill Sets
 
@@ -166,6 +178,9 @@ start the next lab after verifying the current one.
 `inventory_sync_unauthorized`, `agent_identity_lost`, `fleet_report_forbidden`
 
 **API extensions:** `retention_object_rejected`, `backup_policy_incomplete`
+
+**Helm (install / upgrade / rollback):**
+`portal_chart_missing`, `webshop_release_broken`, `billing_values_drift`
 
 Time yourself: `lab run` starts a timer that `lab verify` stops, and `lab list` shows your
 solve time per lab so you can see the repetitions getting faster.

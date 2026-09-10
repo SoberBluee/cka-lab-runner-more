@@ -108,7 +108,7 @@ func cleanupDefaultNamespace(ctx context.Context, kubeconfigPath string) error {
 }
 
 func deleteLabPersistentVolumes(ctx context.Context, kubeconfigPath string) error {
-	known := []string{"local-pv", "db-pv", "app-pv", "finance-db-pv", "caching-redis-pv", "public-site-pv"}
+	known := []string{"local-pv", "db-pv", "app-pv", "finance-db-pv", "caching-redis-pv", "public-site-pv", "audit-logs-pv"}
 	for _, name := range known {
 		_, _ = kubectl(ctx, kubeconfigPath, "delete", "pv", name, "--ignore-not-found=true", "--wait=false")
 	}
@@ -193,10 +193,16 @@ func deleteLabCRDs(ctx context.Context, kubeconfigPath string) error {
 // deletion and would otherwise hand a later lab permissions it should not have.
 func deleteLabClusterRoleBindings(ctx context.Context, kubeconfigPath string) error {
 	labSubjectNamespaces := map[string]bool{
-		"reporting": true,
-		"warehouse": true,
-		"edge":      true,
-		"ci":        true,
+		"reporting":  true,
+		"warehouse":  true,
+		"edge":       true,
+		"ci":         true,
+		"apps":       true,
+		"ops":        true,
+		"commerce":   true,
+		"storefront": true,
+		"portal":     true,
+		"billing":    true,
 	}
 
 	output, err := kubectl(ctx, kubeconfigPath, "get", "clusterrolebindings",
