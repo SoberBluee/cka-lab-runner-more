@@ -26,7 +26,56 @@ const (
 	CategoryWorkloads    Category = "workloads"
 	CategoryRBAC         Category = "rbac"
 	CategorySecurity     Category = "security"
+	CategoryExam         Category = "exam"
 )
+
+type ExamCheckResult struct {
+	Description string
+	Points      int
+	Passed      bool
+}
+
+type ExamTaskResult struct {
+	Number int
+	Title  string
+	Weight int
+	Checks []ExamCheckResult
+}
+
+func (r ExamTaskResult) Score() int {
+	score := 0
+	for _, check := range r.Checks {
+		if check.Passed {
+			score += check.Points
+		}
+	}
+	return score
+}
+
+type ExamReport struct {
+	Tasks []ExamTaskResult
+}
+
+func (r ExamReport) Score() int {
+	score := 0
+	for _, task := range r.Tasks {
+		score += task.Score()
+	}
+	return score
+}
+
+func (r ExamReport) MaxScore() int {
+	total := 0
+	for _, task := range r.Tasks {
+		total += task.Weight
+	}
+	return total
+}
+
+type ScoredLab interface {
+	Lab
+	Grade(ctx context.Context, kubeconfigPath string) ExamReport
+}
 
 // SolutionStep represents a single step in the solution
 type SolutionStep struct {
@@ -116,7 +165,7 @@ func FormatSolution(lab Lab) string {
 	}
 
 	result := fmt.Sprintf("Solution for: %s\n", lab.Title())
-	result += fmt.Sprintf("═══════════════════════════════════════════════════\n\n")
+	result += "═══════════════════════════════════════════════════\n\n"
 
 	for i, step := range steps {
 		result += fmt.Sprintf("Step %d: %s\n", i+1, step.Description)

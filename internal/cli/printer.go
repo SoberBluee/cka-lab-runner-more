@@ -18,8 +18,8 @@ func PrintLabList(labList []labs.Lab, store *progress.Store) {
 		store = &progress.Store{}
 	}
 
-	fmt.Printf("%-6s %-10s %-28s %-36s %-16s %-10s\n", "Done", "Time", "ID", "Title", "Category", "Difficulty")
-	fmt.Println(strings.Repeat("─", 112))
+	fmt.Printf("%-6s %-10s %-9s %-28s %-36s %-16s %-10s\n", "Done", "Time", "Best", "ID", "Title", "Category", "Difficulty")
+	fmt.Println(strings.Repeat("─", 122))
 
 	doneCount := 0
 	for _, lab := range labList {
@@ -30,17 +30,40 @@ func PrintLabList(labList []labs.Lab, store *progress.Store) {
 			mark = "✓"
 			doneCount++
 		}
-		fmt.Printf("%-6s %-10s %-28s %-36s %-16s %-10s\n",
+		scoreCol := "-"
+		if _, ok := lab.(labs.ScoredLab); ok {
+			scoreCol = fmt.Sprintf("%d/100", store.Score(info.ID))
+		}
+		fmt.Printf("%-6s %-10s %-9s %-28s %-36s %-16s %-10s\n",
 			mark,
 			truncate(timeCol, 10),
+			scoreCol,
 			info.ID,
 			truncate(info.Title, 34),
 			info.Category,
 			info.Difficulty,
 		)
 	}
-	fmt.Println(strings.Repeat("─", 112))
+	fmt.Println(strings.Repeat("─", 122))
 	fmt.Printf("Progress: %d/%d completed  (* = timer running)\n", doneCount, len(labList))
+}
+
+func PrintExamReport(report labs.ExamReport) {
+	for _, task := range report.Tasks {
+		mark := "✗"
+		if task.Score() == task.Weight {
+			mark = "✓"
+		}
+		fmt.Printf("%s Task %d: %d/%d — %s\n", mark, task.Number, task.Score(), task.Weight, task.Title)
+		for _, check := range task.Checks {
+			checkMark := "✗"
+			if check.Passed {
+				checkMark = "✓"
+			}
+			fmt.Printf("    %s %dpt %s\n", checkMark, check.Points, check.Description)
+		}
+	}
+	fmt.Printf("\nScore: %d/%d\n", report.Score(), report.MaxScore())
 }
 
 // PrintLabDetails prints detailed information about a lab

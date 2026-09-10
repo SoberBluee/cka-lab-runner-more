@@ -72,9 +72,9 @@ func TestClearAndIncomplete(t *testing.T) {
 
 func TestFormatDuration(t *testing.T) {
 	cases := map[time.Duration]string{
-		0:              "0s",
-		5 * time.Second: "5s",
-		65 * time.Second: "1m5s",
+		0:                  "0s",
+		5 * time.Second:    "5s",
+		65 * time.Second:   "1m5s",
 		3661 * time.Second: "1h1m1s",
 	}
 	for in, want := range cases {
@@ -93,6 +93,39 @@ func TestStatusInProgress(t *testing.T) {
 	}
 	if col == "-" || col[len(col)-1] != '*' {
 		t.Fatalf("expected running marker, got %q", col)
+	}
+}
+
+func TestRecordScoreKeepsBest(t *testing.T) {
+	s := empty()
+	s.StartTimer("exam")
+	if got := s.RecordScore("exam", 50); got != 50 {
+		t.Fatalf("score=%d want 50", got)
+	}
+	if got := s.RecordScore("exam", 40); got != 50 {
+		t.Fatalf("score regressed to %d", got)
+	}
+	if s.IsComplete("exam") {
+		t.Fatal("partial score must not complete exam")
+	}
+	s.RecordScore("exam", 100)
+	s.MarkComplete("exam")
+	if s.Score("exam") != 100 || !s.IsComplete("exam") {
+		t.Fatal("expected completed exam with score 100")
+	}
+}
+
+func TestStartTimerClearsCompletionButKeepsBestScore(t *testing.T) {
+	s := empty()
+	s.StartTimer("exam")
+	s.RecordScore("exam", 80)
+	s.MarkComplete("exam")
+	s.StartTimer("exam")
+	if s.IsComplete("exam") {
+		t.Fatal("rerun must clear completion")
+	}
+	if s.Score("exam") != 80 {
+		t.Fatal("rerun must preserve best score")
 	}
 }
 

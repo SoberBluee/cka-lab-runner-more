@@ -13,6 +13,7 @@ A CLI tool that creates broken Kubernetes scenarios for you to fix—just like t
 - Docker
 - kubectl
 - At least one of: kind, k3d, or minikube
+- Helm 3 (only required for `mock_exam_01`)
 
 ### Install
 
@@ -48,7 +49,11 @@ cka-lab-runner lab solution pod_crashloop
 cka-lab-runner down
 ```
 
+<<<<<<< Updated upstream
 ## Available Labs (73)
+=======
+## Available Labs (69)
+>>>>>>> Stashed changes
 
 Lab IDs and titles describe the **symptom**, not the root cause — the same way a ticket
 would reach you on the job. Don't read the category column if you want a cold diagnosis.
@@ -130,6 +135,25 @@ would reach you on the job. Don't read the category column if you want a cold di
 
 ### Security
 - **cert_expiration** (Hard, 25min) - Check certificate expiration
+
+### Mock Exams
+- **mock_exam_01** (Hard, 120min) - 12-task weighted exam covering workloads, node runtime, CRDs, Services, storage, autoscaling, Gateway API, and Helm
+- **mock_exam_02** (Hard, 120min) - 12-task weighted exam covering workloads, CRDs, HPA/VPA, and Gateway API (no Helm)
+
+Both exams require the default Docker-based kind cluster. Helm 3 is required only for `mock_exam_01`.
+
+```bash
+./cka-lab-runner lab run mock_exam_02
+./cka-lab-runner lab verify mock_exam_02
+```
+
+Verification awards partial credit per requirement and saves the best score. Run it
+as often as needed; the timer stops only at 100/100. Node-local tasks are completed
+inside the kind node:
+
+```bash
+docker exec -it cka-lab-control-plane bash
+```
 
 ### Workloads
 - **pod_crashloop** (Easy, 15min) - Debug CrashLoopBackOff

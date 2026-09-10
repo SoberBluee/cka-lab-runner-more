@@ -16,6 +16,7 @@ type LabRecord struct {
 	StartedAt   string `yaml:"started_at,omitempty"`
 	CompletedAt string `yaml:"completed_at,omitempty"`
 	DurationSec int64  `yaml:"duration_seconds,omitempty"`
+	BestScore   int    `yaml:"best_score,omitempty"`
 }
 
 // Store tracks lab progress and timers.
@@ -105,6 +106,8 @@ func (s *Store) StartTimer(labID string) {
 	}
 	rec := s.Labs[labID]
 	rec.StartedAt = time.Now().UTC().Format(time.RFC3339)
+	rec.CompletedAt = ""
+	rec.DurationSec = 0
 	s.Labs[labID] = rec
 }
 
@@ -130,6 +133,25 @@ func (s *Store) MarkComplete(labID string) time.Duration {
 	rec.DurationSec = int64(dur.Seconds())
 	s.Labs[labID] = rec
 	return dur
+}
+
+func (s *Store) RecordScore(labID string, score int) int {
+	if s.Labs == nil {
+		s.Labs = map[string]LabRecord{}
+	}
+	rec := s.Labs[labID]
+	if score > rec.BestScore {
+		rec.BestScore = score
+		s.Labs[labID] = rec
+	}
+	return rec.BestScore
+}
+
+func (s *Store) Score(labID string) int {
+	if s == nil || s.Labs == nil {
+		return 0
+	}
+	return s.Labs[labID].BestScore
 }
 
 // MarkIncomplete removes completion and timing for labID.

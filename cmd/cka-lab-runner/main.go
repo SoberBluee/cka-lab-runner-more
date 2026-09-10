@@ -394,6 +394,28 @@ var labVerifyCmd = &cobra.Command{
 
 		// Verify the fix
 		cli.Info(fmt.Sprintf("Verifying lab: %s", lab.Title()))
+		if scored, ok := lab.(labs.ScoredLab); ok {
+			report := scored.Grade(ctx, kubeconfigPath)
+			cli.PrintExamReport(report)
+
+			store, err := progress.Load(progress.DefaultFile)
+			if err != nil {
+				return err
+			}
+			best := store.RecordScore(labID, report.Score())
+			if report.Score() == report.MaxScore() {
+				elapsed := store.MarkComplete(labID)
+				store.RecordScore(labID, report.Score())
+				cli.Info(fmt.Sprintf("Time: %s", progress.FormatDuration(elapsed)))
+				cli.Success(fmt.Sprintf("Mock exam complete: %s", lab.Title()))
+			} else {
+				cli.Info(fmt.Sprintf("Best score: %d/%d — timer is still running", best, report.MaxScore()))
+			}
+			if err := progress.Save(store, progress.DefaultFile); err != nil {
+				return err
+			}
+			return nil
+		}
 		if err := lab.Verify(ctx, kubeconfigPath); err != nil {
 			cli.Error(fmt.Sprintf("Lab not fixed yet: %v", err))
 			cli.Info("Keep trying! Use 'cka-lab-runner lab solution' if you need help")

@@ -15,6 +15,7 @@ func TestEveryLabHasUsableMetadata(t *testing.T) {
 		CategoryWorkloads:    true,
 		CategoryRBAC:         true,
 		CategorySecurity:     true,
+		CategoryExam:         true,
 	}
 	validDifficulties := map[Difficulty]bool{
 		DifficultyEasy:   true,

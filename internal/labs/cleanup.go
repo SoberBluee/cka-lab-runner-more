@@ -18,6 +18,8 @@ var protectedNamespaces = map[string]bool{
 // CleanupPreviousLabResources removes leftover namespaces and objects from prior labs
 // so each lab run starts from a clearer cluster state.
 func CleanupPreviousLabResources(ctx context.Context, kubeconfigPath string) error {
+	_ = cleanupMockExamResources(ctx, kubeconfigPath)
+	_ = cleanupMockExam02Resources(ctx, kubeconfigPath)
 	if err := deleteLabNamespaces(ctx, kubeconfigPath); err != nil {
 		return err
 	}
@@ -92,6 +94,8 @@ func cleanupDefaultNamespace(ctx context.Context, kubeconfigPath string) error {
 		"daemonsets",
 		"jobs",
 		"cronjobs",
+		"horizontalpodautoscalers",
+		"verticalpodautoscalers",
 		"services",
 		"ingresses",
 		"networkpolicies",
@@ -179,6 +183,12 @@ func uncordonNodes(ctx context.Context, kubeconfigPath string) error {
 var labCRDNames = []string{
 	"retentionpolicies.ops.cka.local",
 	"backuppolicies.ops.cka.local",
+	"verticalpodautoscalers.autoscaling.k8s.io",
+	"verticalpodautoscalercheckpoints.autoscaling.k8s.io",
+	"gatewayclasses.gateway.networking.k8s.io",
+	"gateways.gateway.networking.k8s.io",
+	"httproutes.gateway.networking.k8s.io",
+	"widgets.ops.exam.local",
 }
 
 func deleteLabCRDs(ctx context.Context, kubeconfigPath string) error {
