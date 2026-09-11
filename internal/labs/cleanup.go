@@ -20,6 +20,7 @@ var protectedNamespaces = map[string]bool{
 func CleanupPreviousLabResources(ctx context.Context, kubeconfigPath string) error {
 	_ = cleanupMockExamResources(ctx, kubeconfigPath)
 	_ = cleanupMockExam02Resources(ctx, kubeconfigPath)
+	_ = cleanupMockExam03Resources(ctx, kubeconfigPath)
 	if err := deleteLabNamespaces(ctx, kubeconfigPath); err != nil {
 		return err
 	}
@@ -112,7 +113,7 @@ func cleanupDefaultNamespace(ctx context.Context, kubeconfigPath string) error {
 }
 
 func deleteLabPersistentVolumes(ctx context.Context, kubeconfigPath string) error {
-	known := []string{"local-pv", "db-pv", "app-pv", "finance-db-pv", "caching-redis-pv", "public-site-pv", "audit-logs-pv"}
+	known := []string{"local-pv", "db-pv", "app-pv", "finance-db-pv", "caching-redis-pv", "public-site-pv", "audit-logs-pv", "practice-pv"}
 	for _, name := range known {
 		_, _ = kubectl(ctx, kubeconfigPath, "delete", "pv", name, "--ignore-not-found=true", "--wait=false")
 	}
@@ -150,6 +151,7 @@ var labTaintKeys = []string{
 	"tier",
 	"hardened",
 	"maintenance",
+	"workload",
 }
 
 func removeLabTaints(ctx context.Context, kubeconfigPath string) error {

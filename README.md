@@ -139,12 +139,13 @@ would reach you on the job. Don't read the category column if you want a cold di
 ### Mock Exams
 - **mock_exam_01** (Hard, 120min) - 12-task weighted exam covering workloads, node runtime, CRDs, Services, storage, autoscaling, Gateway API, and Helm
 - **mock_exam_02** (Hard, 120min) - 12-task weighted exam covering workloads, CRDs, HPA/VPA, and Gateway API (no Helm)
+- **mock_exam_03** (Medium, 90min) - 10-task easy/medium practice exam covering Pods, Deployments, Services, storage, RBAC, taints/tolerations, and Jobs
 
-Both exams require the default Docker-based kind cluster. Helm 3 is required only for `mock_exam_01`.
+Exams require the default Docker-based kind cluster. Helm 3 is required only for `mock_exam_01`.
 
 ```bash
-./cka-lab-runner lab run mock_exam_02
-./cka-lab-runner lab verify mock_exam_02
+./cka-lab-runner lab run mock_exam_03
+./cka-lab-runner lab verify mock_exam_03
 ```
 
 Verification awards partial credit per requirement and saves the best score. Run it
