@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"catalog-api","namespace":"retail"},"spec":{"ports":[{"port":80,"targetPort":80}],"selector":{"app":"catalog-api"}}}
+  creationTimestamp: "2026-09-13T17:24:29Z"
+  name: catalog-api
+  namespace: retail
+  resourceVersion: "13362"
+  uid: 13efb654-860d-445f-ac55-6864ddceab80
+spec:
+  clusterIP: 10.96.120.92
+  clusterIPs:
+  - 10.96.120.92
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: catalog-api
+  sessionAffinity: None
+  type: ClusterIP
+status:
+  loadBalancer: {}

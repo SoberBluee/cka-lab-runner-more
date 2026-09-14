@@ -49,11 +49,52 @@ cka-lab-runner lab solution pod_crashloop
 cka-lab-runner down
 ```
 
-<<<<<<< Updated upstream
-## Available Labs (73)
-=======
-## Available Labs (69)
->>>>>>> Stashed changes
+## Multi-node cluster (upgrade practice)
+
+The default `cka-lab-runner up` creates a **single-node** kind cluster. For exam-style
+kubeadm upgrades (control-plane then worker) and the `upgrade_window_open` lab, create
+a two-node cluster:
+
+```bash
+# Tear down the default single-node cluster if present
+kind delete cluster --name cka-lab
+
+# Create 2-node cluster pinned to the current minor (example: 1.34)
+kind create cluster --name cka-lab \
+  --config configs/kind-multinode.yaml \
+  --image kindest/node:v1.34.0
+
+kubectl get nodes -o wide
+# expect: cka-lab-control-plane, cka-lab-worker
+```
+
+Node hopping (exam wording uses `ssh`; on kind use docker exec):
+
+```bash
+docker exec -it cka-lab-control-plane bash
+docker exec -it cka-lab-worker bash
+```
+
+Manual kubeadm upgrade rehearsal (versions must match what `pkgs.k8s.io` and your
+`kindest/node` image support — adjust `v1.35` / `1.35.0-*.*.*` accordingly):
+
+1. Start from the `v1.34.0` image above.
+2. On the control-plane: point `/etc/apt/sources.list.d/kubernetes.list` at `v1.35`,
+   `apt update`, install matching `kubeadm`, run `kubeadm upgrade plan` / `apply`,
+   upgrade `kubelet`, restart it, `kubectl uncordon`.
+3. Drain the worker, enter the worker node, install matching `kubeadm`, run
+   `kubeadm upgrade node`, upgrade `kubelet`, restart it, then uncordon from the
+   control-plane.
+4. Ensure workloads such as `gold-nginx` can run on the control-plane (you may need
+   `kubectl taint nodes <control-plane> node-role.kubernetes.io/control-plane:NoSchedule-`).
+
+Kind nodes are containers; apt/kubeadm upgrades can be flakier than KodeKloud VMs.
+The multi-node topology still lets you rehearse drain order and pod rescheduling.
+
+For etcd snapshot path drills, use existing labs `recovery_point_missing` and
+`config_history_recovery`.
+
+## Available Labs
 
 Lab IDs and titles describe the **symptom**, not the root cause — the same way a ticket
 would reach you on the job. Don't read the category column if you want a cold diagnosis.
@@ -67,6 +108,8 @@ would reach you on the job. Don't read the category column if you want a cold di
 - **scheduler_failing** (Hard, 25min) - Debug failing kube-scheduler
 - **scheduler_offline** (Hard, 30min) - Debug offline kube-scheduler
 - **cluster_upgrade** (Hard, 30min) - Cluster upgrade simulation
+- **upgrade_window_open** (Hard, 30min) - Multi-node upgrade window; gold workload must land on control-plane [Weight: 15%]
+- **cluster_access_broken** (Medium, 12min) - Broken admin kubeconfig on the node [Weight: 8%]
 - **etcd_backup_restore** (Hard, 30min) - etcd backup and restore
 - **kubelet_stopped** (Medium, 20min) - Fix stopped kubelet service
 - **maintenance_window_prep** (Medium, 20min) - Hand a node over for a maintenance window
@@ -121,6 +164,7 @@ would reach you on the job. Don't read the category column if you want a cold di
 - **storage_pod_pending** (Medium, 15min) - Fix pod waiting on volume claim
 - **database_unavailable** (Medium, 20min) - Database pod stuck Pending
 - **cache_service_down** (Medium, 20min) - Cache deployment pods stuck Pending
+- **alpha_mysql_down** (Hard, 20min) - MySQL Deployment not running; use existing PV [Weight: 20%]
 - **webroot_missing** (Easy, 15min) - Web pod fails to become Ready
 - **replica_pods_stuck** (Hard, 25min) - StatefulSet ordered pods stuck Pending
 
@@ -140,12 +184,13 @@ would reach you on the job. Don't read the category column if you want a cold di
 - **mock_exam_01** (Hard, 120min) - 12-task weighted exam covering workloads, node runtime, CRDs, Services, storage, autoscaling, Gateway API, and Helm
 - **mock_exam_02** (Hard, 120min) - 12-task weighted exam covering workloads, CRDs, HPA/VPA, and Gateway API (no Helm)
 - **mock_exam_03** (Medium, 90min) - 10-task easy/medium practice exam covering Pods, Deployments, Services, storage, RBAC, taints/tolerations, and Jobs
+- **mock_exam_04** (Hard, 120min) - 11-task mixed exam covering StorageClass, multi-container Pods, Ingress, rolling updates, CSR/RBAC, DNS artifacts, static Pods, HPA, Gateway TLS, Helm uninstall, and NetworkPolicy selection
 
-Exams require the default Docker-based kind cluster. Helm 3 is required only for `mock_exam_01`.
+Exams require the default Docker-based kind cluster. Helm 3 is required for `mock_exam_01` and `mock_exam_04`.
 
 ```bash
-./cka-lab-runner lab run mock_exam_03
-./cka-lab-runner lab verify mock_exam_03
+./cka-lab-runner lab run mock_exam_04
+./cka-lab-runner lab verify mock_exam_04
 ```
 
 Verification awards partial credit per requirement and saves the best score. Run it
@@ -157,6 +202,9 @@ docker exec -it cka-lab-control-plane bash
 ```
 
 ### Workloads
+- **ops_inventory_export** (Medium, 10min) - Export sorted Deployment inventory to a file [Weight: 15%]
+- **web_image_stale** (Medium, 12min) - Rolling-update nginx and record the change [Weight: 12%]
+- **secret_mount_ready** (Medium, 10min) - Mount an existing Secret into a Pod [Weight: 20%]
 - **pod_crashloop** (Easy, 15min) - Debug CrashLoopBackOff
 - **image_pull_backoff** (Easy, 10min) - Fix image name typo
 - **statefulset_broken** (Medium, 25min) - Fix StatefulSet configuration

@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: content-publisher
+  name: content-publisher
+  namespace: publish
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: content-publisher
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: content-publisher
+    spec:
+      containers:
+      - image: busybox:1.28
+        name: builder
+        command:
+          - sh
+          - -c
+          - while true; do echo 'HTML' > /content/index.html; sleep 1; done
+
+        volumeMounts:
+        - name: site-data   
+          mountPath: /content
+      - image: nginx:alpine
+        name: web
+        command:
+          - sh
+          - -c
+          - while true; do mv /content/index.html /usr/share/nginx/html; sleep 2; done
+        volumeMounts:
+        - name: site-data
+          mountPath: /content
+      volumes:
+      - name: site-data
+        emptyDir: {}
